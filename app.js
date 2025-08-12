@@ -1,5 +1,13 @@
+// app.js
 const firebaseConfig = {
-  // Replace with your Firebase project config
+  apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
+  authDomain: "psydequest-88a94.firebaseapp.com",
+  databaseURL: "https://psydequest-88a94-default-rtdb.firebaseio.com",
+  projectId: "psydequest-88a94",
+  storageBucket: "psydequest-88a94.firebasestorage.app",
+  messagingSenderId: "36170780281",
+  appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
+  measurementId: "G-JN8T08ZB7R"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -447,7 +455,7 @@ async function verifyPrize() {
         body: JSON.stringify(userData)
       });
       if (navigator.onLine) {
-        await db.collection('users').doc(user).set(userData, { merge: true });
+        db.collection('users').doc(user).set(userData, { merge: true });
       }
       alert('Credit assigned');
     } else {
