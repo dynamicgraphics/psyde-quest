@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Psyde Quest</title>
+  <link rel="manifest" href="/psyde-quest/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Press Start 2P', monospace;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: #fff;
+    }
+    h1 { font-size: 1.5em; margin: 10px 0; }
+    button {
+      font-family: 'Press Start 2P', monospace;
+      padding: 10px 20px;
+      font-size: 0.8em;
+      margin: 5px;
+      cursor: pointer;
+      background: #fff;
+      color: #000;
+      border: 2px solid #fff;
+      border-radius: 0;
+    }
+    button:hover { background: #ccc; }
+    #hotCold, #mechanics, #beaconStatus { font-size: 0.8em; margin: 10px 0; }
+    #qrContainer { position: relative; display: inline-block; }
+    #qrVideo { width: 200px; height: 200px; border: 2px solid #fff; }
+    #pulseRing {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 200px;
+      height: 200px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    #mapCanvas { width: 200px; height: 200px; border: 2px solid #fff; margin: 10px auto; }
+    #progressBar {
+      width: 200px;
+      height: 20px;
+      border: 2px solid #fff;
+      margin: 10px auto;
+      background: #000;
+    }
+    #progressFill { height: 100%; background: #fff; width: 0%; }
+    #menu {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    #leaderboard { font-size: 0.7em; margin: 20px 0; }
+    #socialIcons img { width: 30px; margin: 10px; cursor: pointer; }
+    #simonGame { display: none; margin: 10px 0; }
+    .simon-button { width: 50px; height: 50px; margin: 5px; border: 2px solid #fff; border-radius: 10px; cursor: pointer; }
+    #adminPanel { display: none; background: #000; border: 2px solid #fff; padding: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Psyde Quest</h1>
+  <div id="playerPanel">
+    <p>Scan QR to start</p>
+    <div id="qrContainer">
+      <video id="qrVideo"></video>
+      <div id="pulseRing"></div>
+    </div>
+    <button onclick="startQuest()">Start Quest</button>
+    <button onclick="toggleMenu()">Menu</button>
+    <canvas id="mapCanvas"></canvas>
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <div id="hotCold"></div>
+    <div id="mechanics"></div>
+    <div id="simonGame">
+      <button onclick="playSimonSequence()">Play Sequence</button>
+      <div id="simonButtons"></div>
+    </div>
+  </div>
+  <div id="menu">
+    <h2>Menu</h2>
+    <button onclick="toggleMenu()">Close</button>
+    <div id="leaderboard"></div>
+    <div id="socialIcons">
+      <img src="https://img.icons8.com/ios/50/ffffff/twitterx.png" alt="X" onclick="sharePhoto('x')">
+      <img src="https://img.icons8.com/ios/50/ffffff/instagram-new.png" alt="Instagram" onclick="sharePhoto('instagram')">
+    </div>
+  </div>
+  <div id="adminPanel">
+    <h2>Admin Dashboard</h2>
+    <button onclick="scanBeaconQR()">Map Beacon</button>
+    <button onclick="triggerChaos()">Chaos</button>
+    <button onclick="verifyPrize()">Verify Prize</button>
+    <div id="beaconStatus"></div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="/psyde-quest/app.js"></script>
+</body>
+</html>
