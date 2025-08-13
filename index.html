@@ -93,10 +93,10 @@
   <div id="title">Welcome to Psyde Quest</div>
   <!-- NES Zelda-style title -->
   <div id="mainMenu">
-    <button onclick="startQuest()">Scan</button>
-    <!-- Triggers startQuest function -->
-    <button onclick="toggleMenu()">Menu</button>
-    <!-- Triggers toggleMenu function -->
+    <button onclick="window.startQuest()">Scan</button>
+    <!-- Use window.startQuest to access global function -->
+    <button onclick="window.toggleMenu()">Menu</button>
+    <!-- Use window.toggleMenu to access global function -->
   </div>
   <video id="qrVideo" width="300" height="300"></video>
   <!-- Hidden video for QR scanning -->
@@ -115,18 +115,18 @@
   <div id="menu">
     <div id="leaderboard"></div>
     <!-- Leaderboard display -->
-    <button onclick="sharePhoto('x')">Share on X</button>
-    <!-- Share to X -->
-    <button onclick="sharePhoto('instagram')">Share on Instagram</button>
-    <!-- Share to Instagram -->
+    <button onclick="window.sharePhoto('x')">Share on X</button>
+    <!-- Use window.sharePhoto for global access -->
+    <button onclick="window.sharePhoto('instagram')">Share on Instagram</button>
+    <!-- Use window.sharePhoto for global access -->
     <div id="beaconStatus"></div>
     <!-- Admin beacon status -->
-    <button onclick="scanBeaconQR()">Map Beacon</button>
-    <!-- Admin beacon mapping -->
-    <button onclick="triggerChaos()">Trigger Chaos</button>
-    <!-- Admin chaos trigger -->
-    <button onclick="verifyPrize()">Verify Prize</button>
-    <!-- Admin prize verification -->
+    <button onclick="window.scanBeaconQR()">Map Beacon</button>
+    <!-- Use window.scanBeaconQR for global access -->
+    <button onclick="window.triggerChaos()">Trigger Chaos</button>
+    <!-- Use window.triggerChaos for global access -->
+    <button onclick="window.verifyPrize()">Verify Prize</button>
+    <!-- Use window.verifyPrize for global access -->
   </div>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
