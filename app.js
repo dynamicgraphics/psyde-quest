@@ -1,4 +1,3 @@
-// app.js
 const firebaseConfig = {
   apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
   authDomain: "psydequest-88a94.firebaseapp.com",
@@ -10,12 +9,14 @@ const firebaseConfig = {
   measurementId: "G-JN8T08ZB7R"
 };
 firebase.initializeApp(firebaseConfig);
+// Initialize Firebase with your config
 const db = firebase.firestore();
 const rtdb = firebase.database();
-
+// Initialize Firestore and Realtime Database
 let video, stream, userId = null, currentBeacon = null, questActive = false;
 const isAdmin = localStorage.getItem('isAdmin') === 'true';
 let lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
+// Global variables for quest state
 
 // IndexedDB setup
 const idb = indexedDB.open('PsydeQuest', 1);
@@ -24,6 +25,7 @@ idb.onupgradeneeded = () => {
   db.createObjectStore('users', { keyPath: 'id' });
   db.createObjectStore('beacons', { keyPath: 'deviceId' });
 };
+// Set up IndexedDB for offline storage
 async function saveLocal(store, data) {
   return new Promise(resolve => {
     const tx = idb.result.transaction([store], 'readwrite');
@@ -31,12 +33,14 @@ async function saveLocal(store, data) {
     tx.oncomplete = () => resolve();
   });
 }
+// Save data to IndexedDB
 async function getLocal(store, key) {
   return new Promise(resolve => {
     const tx = idb.result.transaction([store], 'readonly');
     tx.objectStore(store).get(key).onsuccess = e => resolve(e.target.result);
   });
 }
+// Retrieve data from IndexedDB
 async function syncLocalToFirebase() {
   if (!navigator.onLine) return;
   const tx = idb.result.transaction(['users', 'beacons'], 'readonly');
@@ -53,16 +57,18 @@ async function syncLocalToFirebase() {
     });
   };
 }
+// Sync IndexedDB to Firebase when online
 
 // Service Worker registration
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/psyde-quest/sw.js').catch(err => console.error('Service Worker registration failed:', err));
+  navigator.serviceWorker.register('/psyde-quest/sw.js').catch(err => console.error('Service Worker error:', err));
 }
+// Register Service Worker for offline support
 
 // QR code scanning
 async function scanQR() {
   if (Date.now() - lastQRScan < 5000) {
-    alert('Please wait 5 seconds between QR scans');
+    alert('Please wait 5 seconds between scans');
     return null;
   }
   lastQRScan = Date.now();
@@ -92,11 +98,12 @@ async function scanQR() {
       scan();
     });
   } catch (err) {
-    console.error('Camera access error:', err);
+    console.error('Camera error:', err);
     alert('Camera access denied. Please allow camera permissions.');
     return null;
   }
 }
+// Scan QR code with camera, show video, hide after scan
 
 // Pulsing ring animation
 function animatePulseRing(rssi) {
@@ -115,6 +122,7 @@ function animatePulseRing(rssi) {
   }
   pulse();
 }
+// Show and animate pulsing ring based on RSSI
 
 // Overhead map and directional indicator
 function drawMap(playerPos, beaconPos, heading) {
@@ -124,13 +132,9 @@ function drawMap(playerPos, beaconPos, heading) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.strokeStyle = '#fff';
   ctx.fillStyle = '#fff';
-
-  // Player (center circle)
   ctx.beginPath();
   ctx.arc(100, 100, 10, 0, 2 * Math.PI);
   ctx.fill();
-
-  // Beacon (relative position)
   const dx = beaconPos.lng - playerPos.longitude;
   const dy = beaconPos.lat - playerPos.latitude;
   const distance = calculateDistance(playerPos, beaconPos);
@@ -140,21 +144,18 @@ function drawMap(playerPos, beaconPos, heading) {
   ctx.beginPath();
   ctx.arc(bx, by, 5, 0, 2 * Math.PI);
   ctx.fill();
-
-  // Directional arrow
   const angle = Math.atan2(dy, dx) - (heading * Math.PI / 180);
   ctx.beginPath();
   ctx.moveTo(100, 100);
   ctx.lineTo(100 + 20 * Math.cos(angle), 100 - 20 * Math.sin(angle));
   ctx.stroke();
-
-  // Haptic feedback
   const bearing = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
   const diff = Math.abs((bearing - heading + 180) % 360 - 180);
   if ('vibrate' in navigator && diff < 30) {
     navigator.vibrate(100);
   }
 }
+// Show and draw map with player, beacon, and directional arrow
 
 // Start quest
 async function startQuest() {
@@ -174,10 +175,12 @@ async function startQuest() {
     });
     questActive = true;
     document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('title').style.display = 'none';
     const qrData = await scanQR();
     if (!qrData) {
       questActive = false;
       document.getElementById('mainMenu').style.display = 'block';
+      document.getElementById('title').style.display = 'block';
       return;
     }
     const validDomains = [
@@ -191,6 +194,7 @@ async function startQuest() {
         alert('Invalid beacon ID format!');
         questActive = false;
         document.getElementById('mainMenu').style.display = 'block';
+        document.getElementById('title').style.display = 'block';
         return;
       }
       const beaconDoc = await getLocal('beacons', beaconId) || await db.collection('beacons').doc(beaconId).get();
@@ -201,19 +205,23 @@ async function startQuest() {
         alert('Beacon not found!');
         questActive = false;
         document.getElementById('mainMenu').style.display = 'block';
+        document.getElementById('title').style.display = 'block';
       }
     } else {
       alert('Invalid QR code!');
       questActive = false;
       document.getElementById('mainMenu').style.display = 'block';
+      document.getElementById('title').style.display = 'block';
     }
   } catch (error) {
     console.error('Start quest error:', error);
     alert('Error starting quest: ' + error.message);
     questActive = false;
     document.getElementById('mainMenu').style.display = 'block';
+    document.getElementById('title').style.display = 'block';
   }
 }
+// Start quest, hide menu/title, show navigation UI
 
 // Navigation
 async function startNavigation() {
@@ -229,12 +237,10 @@ async function startNavigation() {
     err => alert('GPS error: ' + err.message),
     { enableHighAccuracy: true }
   );
-
   window.addEventListener('deviceorientation', event => {
     lastHeading = event.alpha || 0;
     if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
   });
-
   try {
     const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] });
     device.addEventListener('advertisementreceived', event => {
@@ -267,6 +273,7 @@ async function startNavigation() {
     alert('BLE error: ' + error.message);
   }
 }
+// Handle navigation with GPS, BLE, and UI updates
 
 function calculateDistance(coords1, coords2) {
   const R = 6371e3;
@@ -278,6 +285,7 @@ function calculateDistance(coords1, coords2) {
             Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
+// Calculate distance between coordinates
 
 // Update progress bar
 async function updateProgress() {
@@ -285,6 +293,7 @@ async function updateProgress() {
   const progress = userData.beaconsFound.length * 20;
   document.getElementById('progressFill').style.width = `${progress}%`;
 }
+// Update progress bar based on beacons found
 
 // Leaderboard
 async function updateLeaderboard() {
@@ -297,6 +306,7 @@ async function updateLeaderboard() {
   });
   leaderboard.innerHTML = html;
 }
+// Fetch and display top 10 players
 
 // Social sharing
 async function sharePhoto(platform) {
@@ -318,12 +328,14 @@ async function sharePhoto(platform) {
   };
   input.click();
 }
+// Share photo to X or Instagram
 
 function toggleMenu() {
   const menu = document.getElementById('menu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   if (menu.style.display === 'block') updateLeaderboard();
 }
+// Toggle menu visibility and update leaderboard
 
 // Phone-based mechanics
 let lastMechanicAttempt = 0;
@@ -350,6 +362,7 @@ async function triggerMechanic(type) {
     navigator.geolocation.watchPosition(handleSlowMovement, () => alert('GPS error'), { enableHighAccuracy: true });
   }
 }
+// Trigger phone-based mechanics
 
 function handleShake(event) {
   if (Math.abs(event.acceleration.x) > 10 || Math.abs(event.acceleration.y) > 10) {
@@ -358,6 +371,7 @@ function handleShake(event) {
     window.addEventListener('devicemotion', handleShake, { once: true });
   }
 }
+// Handle shake mechanic
 
 function checkRiddle() {
   if (document.getElementById('riddleAnswer').value.toLowerCase() === 'piano') {
@@ -366,6 +380,7 @@ function checkRiddle() {
     alert('Try again!');
   }
 }
+// Check riddle answer
 
 let simonSequence = [], playerSequence = [];
 function startSimonGame() {
@@ -379,6 +394,7 @@ function startSimonGame() {
   `;
   playSimonSequence();
 }
+// Start Simon game
 
 function playSimonSequence() {
   let i = 0;
@@ -394,6 +410,7 @@ function playSimonSequence() {
     i++;
   }, 1000);
 }
+// Play Simon sequence
 
 function playerSimon(color) {
   playerSequence.push(color);
@@ -407,6 +424,7 @@ function playerSimon(color) {
     }
   }
 }
+// Handle Simon player input
 
 function handleSlowMovement(pos) {
   const speed = pos.coords.speed || 0;
@@ -416,6 +434,7 @@ function handleSlowMovement(pos) {
     document.getElementById('mechanics').innerHTML = `<p>Move slowly! Speed: ${speed.toFixed(2)} m/s</p>`;
   }
 }
+// Handle slow movement mechanic
 
 async function completeBeacon() {
   const userData = { id: userId, beaconsFound: (await getLocal('users', userId))?.beaconsFound || [], score: (await getLocal('users', userId))?.score || 0 };
@@ -437,10 +456,12 @@ async function completeBeacon() {
     document.getElementById('hotCold').innerText = `Prize QR: ${prizeQR}`;
     questActive = false;
     document.getElementById('mainMenu').style.display = 'block';
+    document.getElementById('title').style.display = 'block';
   } else {
     startQuest();
   }
 }
+// Complete beacon, update score, handle prize
 
 // Admin functions
 async function scanBeaconQR() {
@@ -481,6 +502,7 @@ async function scanBeaconQR() {
     alert('Invalid QR code!');
   }
 }
+// Admin: Map beacon with QR and GPS
 
 async function triggerChaos() {
   if (!isAdmin) return alert('Admin access required');
@@ -495,6 +517,7 @@ async function triggerChaos() {
   });
   alert('Chaos triggered!');
 }
+// Admin: Trigger chaos event
 
 async function verifyPrize() {
   if (!isAdmin) return alert('Admin access required');
@@ -531,6 +554,7 @@ async function verifyPrize() {
     alert('Invalid prize QR!');
   }
 }
+// Admin: Verify prize QR
 
 // Local status monitoring
 setInterval(() => {
@@ -547,6 +571,8 @@ setInterval(() => {
     }).catch(err => console.error('Beacon status error:', err));
   }
 }, 30000);
+// Monitor beacon status for admins
 
 // Sync on reconnect
 window.addEventListener('online', syncLocalToFirebase);
+// Sync data when online
