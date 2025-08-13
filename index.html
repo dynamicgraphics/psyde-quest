@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Psyde Quest</title>
   <link rel="manifest" href="/psyde-quest/manifest.json">
+  <!-- Link to manifest for PWA -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <!-- Add Press Start 2P font for NES Zelda-style title -->
   <style>
@@ -86,6 +87,7 @@
       border-radius: 10px;
     }
   </style>
+  <!-- Black-and-white minimal CSS with NES Zelda title -->
 </head>
 <body>
   <div id="title">Welcome to Psyde Quest</div>
@@ -126,15 +128,29 @@
     <button onclick="verifyPrize()">Verify Prize</button>
     <!-- Admin prize verification -->
   </div>
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
-  <!-- Firestore SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
-  <!-- Realtime Database SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
+    import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+    import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
+    const firebaseConfig = {
+      apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
+      authDomain: "psydequest-88a94.firebaseapp.com",
+      databaseURL: "https://psydequest-88a94-default-rtdb.firebaseio.com",
+      projectId: "psydequest-88a94",
+      storageBucket: "psydequest-88a94.firebasestorage.app",
+      messagingSenderId: "36170780281",
+      appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
+      measurementId: "G-JN8T08ZB7R"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const rtdb = getDatabase(app);
+    window.firebase = { app, db, collection, doc, getDoc, setDoc, orderBy, limit, query, rtdb, ref, set };
+  </script>
+  <!-- Firebase modular SDK with type="module" and global firebase object -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <!-- jsQR for QR scanning -->
-  <script src="/psyde-quest/app.js"></script>
-  <!-- Main app logic -->
+  <script type="module" src="/psyde-quest/app.js"></script>
+  <!-- Main app logic as module -->
 </body>
 </html>
