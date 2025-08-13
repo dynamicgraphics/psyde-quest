@@ -1,12 +1,8 @@
-// app.js
-
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
-import 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
 
-// Re-initialize Firebase and remove the window.firebase object.
-// This is the correct way to use modules.
+// Firebase is now initialized inside the module
 const firebaseConfig = {
   apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
   authDomain: "psydequest-88a94.firebaseapp.com",
@@ -127,14 +123,13 @@ async function scanQR() {
 function animatePulseRing(rssi) {
   const ring = document.getElementById('pulseRing');
   ring.style.display = 'block';
-  // Simplified and corrected the pulse logic
   let scale = 1.0;
   let speed = rssi > -60 ? 500 : rssi > -80 ? 1000 : 1500;
   
   function pulse() {
     ring.style.transform = `scale(${scale})`;
     ring.style.opacity = scale === 1.0 ? 0.8 : 0.5;
-    scale = scale === 1.0 ? 1.2 : 1.0; // Toggle between two scales
+    scale = scale === 1.0 ? 1.2 : 1.0;
     setTimeout(pulse, speed);
   }
   pulse();
@@ -148,30 +143,23 @@ function drawMap(playerPos, beaconPos, heading) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.strokeStyle = '#fff';
   ctx.fillStyle = '#fff';
-
-  // Player dot
   ctx.beginPath();
   ctx.arc(100, 100, 10, 0, 2 * Math.PI);
   ctx.fill();
-
   const dx = beaconPos.lng - playerPos.longitude;
   const dy = beaconPos.lat - playerPos.latitude;
   const distance = calculateDistance(playerPos, beaconPos);
-  const scale = Math.min(50 / distance, 0.5); // Fixed scale calculation
+  const scale = Math.min(50 / distance, 0.5);
   const bx = 100 + dx * scale * 1000;
   const by = 100 - dy * scale * 1000;
-
-  // Beacon dot
   ctx.beginPath();
   ctx.arc(bx, by, 5, 0, 2 * Math.PI);
   ctx.fill();
-
   const angle = Math.atan2(dy, dx) - (heading * Math.PI / 180);
   ctx.beginPath();
   ctx.moveTo(100, 100);
   ctx.lineTo(100 + 20 * Math.cos(angle), 100 - 20 * Math.sin(angle));
   ctx.stroke();
-
   const bearing = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
   const diff = Math.abs((bearing - heading + 180) % 360 - 180);
   if ('vibrate' in navigator && diff < 30) {
@@ -194,36 +182,30 @@ async function startQuest() {
     await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
       throw new Error('BLE permission needed: ' + err.message);
     });
-
     questActive = true;
-    document.getElementById('mainMenu').style.display = 'none';
-    document.getElementById('title').style.display = 'none';
-    
+    document.getElementById('welcomeContainer').style.display = 'none'; // Hide welcome screen
+    document.getElementById('progressBar').style.display = 'block'; // Show progress bar
     const qrData = await scanQR();
     if (!qrData) {
       questActive = false;
-      document.getElementById('mainMenu').style.display = 'block';
-      document.getElementById('title').style.display = 'block';
+      document.getElementById('welcomeContainer').style.display = 'flex';
+      document.getElementById('progressBar').style.display = 'none';
       return;
     }
-    
     const validDomains = [
       'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
       'https://dynamicgraphics.github.io/psyde-quest/start',
       'http://192.168.1.100/start'
     ];
-
     if (validDomains.some(domain => qrData.startsWith(domain))) {
       const beaconId = new URL(qrData).searchParams.get('beacon');
       if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
         alert('Invalid beacon ID format!');
         questActive = false;
-        document.getElementById('mainMenu').style.display = 'block';
-        document.getElementById('title').style.display = 'block';
+        document.getElementById('welcomeContainer').style.display = 'flex';
+        document.getElementById('progressBar').style.display = 'none';
         return;
       }
-      
-      // Corrected logic: check local DB first, then Firebase
       let beaconDoc = await getLocal('beacons', beaconId);
       if (!beaconDoc && navigator.onLine) {
         const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
@@ -231,28 +213,27 @@ async function startQuest() {
           beaconDoc = firebaseDoc.data();
         }
       }
-
       if (beaconDoc) {
         currentBeacon = { id: beaconId, data: () => beaconDoc };
         startNavigation();
       } else {
         alert('Beacon not found!');
         questActive = false;
-        document.getElementById('mainMenu').style.display = 'block';
-        document.getElementById('title').style.display = 'block';
+        document.getElementById('welcomeContainer').style.display = 'flex';
+        document.getElementById('progressBar').style.display = 'none';
       }
     } else {
       alert('Invalid QR code!');
       questActive = false;
-      document.getElementById('mainMenu').style.display = 'block';
-      document.getElementById('title').style.display = 'block';
+      document.getElementById('welcomeContainer').style.display = 'flex';
+      document.getElementById('progressBar').style.display = 'none';
     }
   } catch (error) {
     console.error('Start quest error:', error);
     alert('Error starting quest: ' + error.message);
     questActive = false;
-    document.getElementById('mainMenu').style.display = 'block';
-    document.getElementById('title').style.display = 'block';
+    document.getElementById('welcomeContainer').style.display = 'flex';
+    document.getElementById('progressBar').style.display = 'none';
   }
 }
 
@@ -269,28 +250,22 @@ async function startNavigation() {
     },
     err => alert('GPS error: ' + err.message), { enableHighAccuracy: true }
   );
-
   const orientationHandler = event => {
     lastHeading = event.alpha || 0;
     if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
   };
   window.addEventListener('deviceorientation', orientationHandler);
-
   try {
     const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] });
     const advertisementHandler = event => {
       const rssi = event.rssi;
       lastRSSI = rssi;
-      // Fixed the distance check logic
       const distance = lastPosition ? calculateDistance(lastPosition.coords, currentBeacon.data()) : Infinity;
       if (distance > 10 && rssi > -80) {
-        // You might want to remove this alert for a better user experience
-        // alert('Suspicious GPS/BLE mismatch!');
         return;
       }
       document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m | ${rssi > -60 ? 'Hot!' : rssi > -80 ? 'Warm' : 'Cold'}`;
       animatePulseRing(rssi);
-
       if (rssi > -60) {
         const serviceData = event.serviceData.get(0xFEAA);
         if (serviceData) {
@@ -359,7 +334,7 @@ async function sharePhoto(platform) {
 }
 
 function toggleMenu() {
-  const menu = document.getElementById('menu'); // Fixed the ID here
+  const menu = document.getElementById('menu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   if (menu.style.display === 'block') updateLeaderboard();
 }
@@ -396,7 +371,6 @@ function handleShake(event) {
     console.warn("Acceleration data not available.");
     return;
   }
-  // Simplified shake detection for better reliability
   const threshold = 15;
   if (Math.abs(acceleration.x) > threshold || Math.abs(acceleration.y) > threshold || Math.abs(acceleration.z) > threshold) {
     completeBeacon();
@@ -469,31 +443,27 @@ function handleSlowMovement(pos) {
 
 async function completeBeacon() {
   const userData = await getLocal('users', userId) || { beaconsFound: [], score: 0 };
-  if (!userData.beaconsFound.includes(currentBeacon.id)) { // Prevent double-counting
+  if (!userData.beaconsFound.includes(currentBeacon.id)) {
       userData.beaconsFound.push(currentBeacon.id);
       const isAdvanced = ['beacon_03', 'beacon_04'].includes(currentBeacon.id);
       userData.score += isAdvanced ? 200 : 100;
   }
-  
   await saveLocal('users', userData);
-  
   fetch('http://192.168.1.100/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData)
   });
-
   if (navigator.onLine) {
     await setDoc(doc(db, 'users', userId), userData, { merge: true });
   }
-
   updateProgress();
   if (userData.beaconsFound.length >= 5) {
     const prizeQR = `http://192.168.1.100/prize?user=${userId}&quest=1`;
     document.getElementById('hotCold').innerText = `Prize QR: ${prizeQR}`;
     questActive = false;
-    document.getElementById('mainMenu').style.display = 'block';
-    document.getElementById('title').style.display = 'block';
+    document.getElementById('welcomeContainer').style.display = 'flex';
+    document.getElementById('progressBar').style.display = 'none';
   } else {
     startQuest();
   }
@@ -503,13 +473,11 @@ async function scanBeaconQR() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
   if (!qrData) return;
-
   const validDomains = [
     'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/admin',
     'https://dynamicgraphics.github.io/psyde-quest/admin',
     'http://192.168.1.100/admin'
   ];
-
   try {
     const url = new URL(qrData);
     if (validDomains.some(domain => url.href.startsWith(domain))) {
@@ -563,19 +531,15 @@ async function verifyPrize() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
   if (!qrData) return;
-
   const validDomains = [
     'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/prize',
     'https://dynamicgraphics.github.io/psyde-quest/prize',
     'http://192.168.1.100/prize'
   ];
-
   try {
     const url = new URL(qrData);
     if (validDomains.some(domain => url.href.startsWith(domain))) {
       const { user, quest } = Object.fromEntries(url.searchParams);
-      
-      // Corrected logic to handle both local and Firebase data correctly
       let userDoc = await getLocal('users', user);
       if (!userDoc && navigator.onLine) {
           const firebaseDoc = await getDoc(doc(db, 'users', user));
@@ -583,7 +547,6 @@ async function verifyPrize() {
               userDoc = firebaseDoc.data();
           }
       }
-      
       const beaconsFound = userDoc ? userDoc.beaconsFound : [];
       if (beaconsFound && beaconsFound.length >= 5) {
         alert('Prize verified!');
@@ -593,9 +556,7 @@ async function verifyPrize() {
           userData.beaconsFound.push('manual_credit');
           userData.score += 100;
         }
-
         await saveLocal('users', userData);
-        
         fetch('http://192.168.1.100/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
