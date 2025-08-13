@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mapBeaconButton').addEventListener('click', scanBeaconQR);
   document.getElementById('triggerChaosButton').addEventListener('click', triggerChaos);
   document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
+  document.getElementById('permissionButton').addEventListener('click', handlePermissions);
 });
 
 async function scanQR() {
@@ -148,12 +149,20 @@ function drawMap(playerPos, beaconPos, heading) {
     navigator.vibrate(100);
   }
 }
+
 async function startQuest() {
   if (questActive) {
     alert('Quest already active!');
     return;
   }
   userId = 'user_' + Date.now();
+  document.getElementById('welcomeContainer').style.display = 'none';
+  document.getElementById('permissionGuide').style.display = 'block';
+}
+
+async function handlePermissions() {
+  document.getElementById('permissionGuide').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'block';
   try {
     await navigator.geolocation.getCurrentPosition(
       () => {},
@@ -163,8 +172,6 @@ async function startQuest() {
       throw new Error('BLE permission needed: ' + err.message);
     });
     questActive = true;
-    document.getElementById('welcomeContainer').style.display = 'none';
-    document.getElementById('progressBar').style.display = 'block';
     const qrData = await scanQR();
     if (!qrData) {
       questActive = false;
@@ -214,51 +221,6 @@ async function startQuest() {
     questActive = false;
     document.getElementById('welcomeContainer').style.display = 'flex';
     document.getElementById('progressBar').style.display = 'none';
-  }
-}
-async function startNavigation() {
-  let lastPosition = null;
-  const geolocationWatch = navigator.geolocation.watchPosition(
-    pos => {
-      lastPosition = pos;
-      const distance = calculateDistance(pos.coords, currentBeacon.data());
-      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m`;
-      drawMap(pos.coords, currentBeacon.data(), lastHeading);
-      updateProgress();
-    },
-    err => alert('GPS error: ' + err.message), { enableHighAccuracy: true }
-  );
-  const orientationHandler = event => {
-    lastHeading = event.alpha || 0;
-    if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
-  };
-  window.addEventListener('deviceorientation', orientationHandler);
-  try {
-    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] });
-    const advertisementHandler = event => {
-      const rssi = event.rssi;
-      lastRSSI = rssi;
-      const distance = lastPosition ? calculateDistance(lastPosition.coords, currentBeacon.data()) : Infinity;
-      if (distance > 10 && rssi > -80) {
-        return;
-      }
-      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m | ${rssi > -60 ? 'Hot!' : rssi > -80 ? 'Warm' : 'Cold'}`;
-      animatePulseRing(rssi);
-      if (rssi > -60) {
-        const serviceData = event.serviceData.get(0xFEAA);
-        if (serviceData) {
-          const instanceId = Array.from(new Uint8Array(serviceData)).slice(10, 16).map(b => b.toString(16).padStart(2, '0')).join('');
-          if (instanceId === currentBeacon.data().instanceId) {
-            triggerMechanic(currentBeacon.data().mechanic);
-          }
-        }
-      }
-    };
-    device.addEventListener('advertisementreceived', advertisementHandler);
-    await device.watchAdvertisements();
-  } catch (error) {
-    console.error('BLE error:', error);
-    alert('BLE error: ' + error.message);
   }
 }
 function calculateDistance(coords1, coords2) {
@@ -407,7 +369,7 @@ function handleSlowMovement(pos) {
   }
 }
 async function completeBeacon() {
-  const userData = await getLocal('users', userId) || { beaconsFound: [], score: 0 };
+  const userData = await getLocal('users', userId) || { beaconsFound: [] };
   if (!userData.beaconsFound.includes(currentBeacon.id)) {
       userData.beaconsFound.push(currentBeacon.id);
       const isAdvanced = ['beacon_03', 'beacon_04'].includes(currentBeacon.id);
@@ -536,5 +498,50 @@ async function verifyPrize() {
     }
   } catch (error) {
     alert('Invalid prize QR format.');
+  }
+}
+async function startNavigation() {
+  let lastPosition = null;
+  const geolocationWatch = navigator.geolocation.watchPosition(
+    pos => {
+      lastPosition = pos;
+      const distance = calculateDistance(pos.coords, currentBeacon.data());
+      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m`;
+      drawMap(pos.coords, currentBeacon.data(), lastHeading);
+      updateProgress();
+    },
+    err => alert('GPS error: ' + err.message), { enableHighAccuracy: true }
+  );
+  const orientationHandler = event => {
+    lastHeading = event.alpha || 0;
+    if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
+  };
+  window.addEventListener('deviceorientation', orientationHandler);
+  try {
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] });
+    const advertisementHandler = event => {
+      const rssi = event.rssi;
+      lastRSSI = rssi;
+      const distance = lastPosition ? calculateDistance(lastPosition.coords, currentBeacon.data()) : Infinity;
+      if (distance > 10 && rssi > -80) {
+        return;
+      }
+      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m | ${rssi > -60 ? 'Hot!' : rssi > -80 ? 'Warm' : 'Cold'}`;
+      animatePulseRing(rssi);
+      if (rssi > -60) {
+        const serviceData = event.serviceData.get(0xFEAA);
+        if (serviceData) {
+          const instanceId = Array.from(new Uint8Array(serviceData)).slice(10, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+          if (instanceId === currentBeacon.data().instanceId) {
+            triggerMechanic(currentBeacon.data().mechanic);
+          }
+        }
+      }
+    };
+    device.addEventListener('advertisementreceived', advertisementHandler);
+    await device.watchAdvertisements();
+  } catch (error) {
+    console.error('BLE error:', error);
+    alert('BLE error: ' + error.message);
   }
 }
