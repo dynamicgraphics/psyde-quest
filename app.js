@@ -88,6 +88,8 @@ async function scanQR() {
   }
 }
 // Scan QR code with camera, show video, hide after scan
+window.scanQR = scanQR;
+// Export scanQR to global scope for onclick
 
 // Pulsing ring animation
 function animatePulseRing(rssi) {
@@ -206,6 +208,8 @@ async function startQuest() {
   }
 }
 // Start quest, hide menu/title, show navigation UI
+window.startQuest = startQuest;
+// Export startQuest to global scope for onclick
 
 // Navigation
 async function startNavigation() {
@@ -311,6 +315,8 @@ async function sharePhoto(platform) {
   input.click();
 }
 // Share photo to X or Instagram
+window.sharePhoto = sharePhoto;
+// Export sharePhoto to global scope for onclick
 
 function toggleMenu() {
   const menu = document.getElementById('menu');
@@ -318,6 +324,8 @@ function toggleMenu() {
   if (menu.style.display === 'block') updateLeaderboard();
 }
 // Toggle menu visibility and update leaderboard
+window.toggleMenu = toggleMenu;
+// Export toggleMenu to global scope for onclick
 
 let lastMechanicAttempt = 0;
 async function triggerMechanic(type) {
@@ -333,7 +341,7 @@ async function triggerMechanic(type) {
     mechanicsDiv.innerHTML = '<p>Shake your phone!</p>';
     window.addEventListener('devicemotion', handleShake, { once: true });
   } else if (type === 'riddle') {
-    mechanicsDiv.innerHTML = '<p>Riddle: What has keys but can\'t open locks? <input id="riddleAnswer"><button onclick="checkRiddle()">Submit</button></p>';
+    mechanicsDiv.innerHTML = '<p>Riddle: What has keys but can\'t open locks? <input id="riddleAnswer"><button onclick="window.checkRiddle()">Submit</button></p>';
   } else if (type === 'simon') {
     mechanicsDiv.innerHTML = '<p>Simon Game: Repeat the sequence</p>';
     document.getElementById('simonGame').style.display = 'block';
@@ -362,16 +370,18 @@ function checkRiddle() {
   }
 }
 // Check riddle answer
+window.checkRiddle = checkRiddle;
+// Export checkRiddle to global scope for onclick
 
 let simonSequence = [], playerSequence = [];
 function startSimonGame() {
   simonSequence = Array(5).fill().map(() => Math.floor(Math.random() * 4));
   const simonButtons = document.getElementById('simonButtons');
   simonButtons.innerHTML = `
-    <button class="simon-button" style="background-color: red;" onclick="playerSimon(0)">Red</button>
-    <button class="simon-button" style="background-color: blue;" onclick="playerSimon(1)">Blue</button>
-    <button class="simon-button" style="background-color: green;" onclick="playerSimon(2)">Green</button>
-    <button class="simon-button" style="background-color: yellow;" onclick="playerSimon(3)">Yellow</button>
+    <button class="simon-button" style="background-color: red;" onclick="window.playerSimon(0)">Red</button>
+    <button class="simon-button" style="background-color: blue;" onclick="window.playerSimon(1)">Blue</button>
+    <button class="simon-button" style="background-color: green;" onclick="window.playerSimon(2)">Green</button>
+    <button class="simon-button" style="background-color: yellow;" onclick="window.playerSimon(3)">Yellow</button>
   `;
   playSimonSequence();
 }
@@ -406,6 +416,8 @@ function playerSimon(color) {
   }
 }
 // Handle Simon player input
+window.playerSimon = playerSimon;
+// Export playerSimon to global scope for onclick
 
 function handleSlowMovement(pos) {
   const speed = pos.coords.speed || 0;
@@ -483,6 +495,8 @@ async function scanBeaconQR() {
   }
 }
 // Admin: Map beacon with QR and GPS
+window.scanBeaconQR = scanBeaconQR;
+// Export scanBeaconQR to global scope for onclick
 
 async function triggerChaos() {
   if (!isAdmin) return alert('Admin access required');
@@ -498,6 +512,8 @@ async function triggerChaos() {
   alert('Chaos triggered!');
 }
 // Admin: Trigger chaos event
+window.triggerChaos = triggerChaos;
+// Export triggerChaos to global scope for onclick
 
 async function verifyPrize() {
   if (!isAdmin) return alert('Admin access required');
@@ -535,6 +551,8 @@ async function verifyPrize() {
   }
 }
 // Admin: Verify prize QR
+window.verifyPrize = verifyPrize;
+// Export verifyPrize to global scope for onclick
 
 // Local status monitoring
 setInterval(() => {
