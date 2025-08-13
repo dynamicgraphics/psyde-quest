@@ -1,22 +1,7 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
-  authDomain: "psydequest-88a94.firebaseapp.com",
-  databaseURL: "https://psydequest-88a94-default-rtdb.firebaseio.com",
-  projectId: "psydequest-88a94",
-  storageBucket: "psydequest-88a94.firebasestorage.app",
-  messagingSenderId: "36170780281",
-  appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
-  measurementId: "G-JN8T08ZB7R"
-};
-firebase.initializeApp(firebaseConfig);
-// Initialize Firebase with your config
-const db = firebase.firestore();
-const rtdb = firebase.database();
-// Initialize Firestore and Realtime Database
 let video, stream, userId = null, currentBeacon = null, questActive = false;
 const isAdmin = localStorage.getItem('isAdmin') === 'true';
 let lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
-// Global variables for quest state
+// Global variables moved to top for initialization
 
 // IndexedDB setup
 const idb = indexedDB.open('PsydeQuest', 1);
@@ -48,12 +33,12 @@ async function syncLocalToFirebase() {
   const beaconStore = tx.objectStore('beacons');
   userStore.getAll().onsuccess = e => {
     e.target.result.forEach(user => {
-      db.collection('users').doc(user.id).set(user, { merge: true });
+      firebase.setDoc(firebase.doc(firebase.db, 'users', user.id), user, { merge: true });
     });
   };
   beaconStore.getAll().onsuccess = e => {
     e.target.result.forEach(beacon => {
-      db.collection('beacons').doc(beacon.deviceId).set(beacon, { merge: true });
+      firebase.setDoc(firebase.doc(firebase.db, 'beacons', beacon.deviceId), beacon, { merge: true });
     });
   };
 }
@@ -197,9 +182,9 @@ async function startQuest() {
         document.getElementById('title').style.display = 'block';
         return;
       }
-      const beaconDoc = await getLocal('beacons', beaconId) || await db.collection('beacons').doc(beaconId).get();
-      if (beaconDoc && (beaconDoc.data || beaconDoc.exists)) {
-        currentBeacon = beaconDoc.data ? { id: beaconId, data: () => beaconDoc } : beaconDoc;
+      const beaconDoc = await getLocal('beacons', beaconId) || await firebase.getDoc(firebase.doc(firebase.db, 'beacons', beaconId));
+      if (beaconDoc && (beaconDoc.data() || beaconDoc.exists())) {
+        currentBeacon = beaconDoc.data() ? { id: beaconId, data: () => beaconDoc } : beaconDoc;
         startNavigation();
       } else {
         alert('Beacon not found!');
@@ -287,7 +272,6 @@ function calculateDistance(coords1, coords2) {
 }
 // Calculate distance between coordinates
 
-// Update progress bar
 async function updateProgress() {
   const userData = await getLocal('users', userId) || { beaconsFound: [] };
   const progress = userData.beaconsFound.length * 20;
@@ -295,10 +279,10 @@ async function updateProgress() {
 }
 // Update progress bar based on beacons found
 
-// Leaderboard
 async function updateLeaderboard() {
   const leaderboard = document.getElementById('leaderboard');
-  const snapshot = await db.collection('users').orderBy('score', 'desc').limit(10).get();
+  const q = firebase.query(firebase.collection(firebase.db, 'users'), firebase.orderBy('score', 'desc'), firebase.limit(10));
+  const snapshot = await firebase.getDocs(q);
   let html = '<h3>Leaderboard</h3>';
   snapshot.forEach(doc => {
     const data = doc.data();
@@ -308,7 +292,6 @@ async function updateLeaderboard() {
 }
 // Fetch and display top 10 players
 
-// Social sharing
 async function sharePhoto(platform) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -337,7 +320,6 @@ function toggleMenu() {
 }
 // Toggle menu visibility and update leaderboard
 
-// Phone-based mechanics
 let lastMechanicAttempt = 0;
 async function triggerMechanic(type) {
   if (Date.now() - lastMechanicAttempt < 3000) {
@@ -448,7 +430,7 @@ async function completeBeacon() {
     body: JSON.stringify(userData)
   });
   if (navigator.onLine) {
-    await db.collection('users').doc(userId).set(userData, { merge: true });
+    await firebase.setDoc(firebase.doc(firebase.db, 'users', userId), userData, { merge: true });
   }
   updateProgress();
   if (userData.beaconsFound.length >= 5) {
@@ -463,7 +445,6 @@ async function completeBeacon() {
 }
 // Complete beacon, update score, handle prize
 
-// Admin functions
 async function scanBeaconQR() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
@@ -494,7 +475,7 @@ async function scanBeaconQR() {
         body: JSON.stringify({ id: beaconId, status: 'ALIVE' })
       });
       if (navigator.onLine) {
-        db.collection('beacons').doc(beaconId).set(beaconData);
+        firebase.setDoc(firebase.doc(firebase.db, 'beacons', beaconId), beaconData);
       }
       alert(`Beacon ${beaconId} mapped at (${pos.coords.latitude}, ${pos.coords.longitude})`);
     }, () => alert('GPS permission needed'));
@@ -508,7 +489,7 @@ async function triggerChaos() {
   if (!isAdmin) return alert('Admin access required');
   const newIndex = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
   if (navigator.onLine) {
-    await rtdb.ref('chaos').set(`CHAOS:${newIndex}`);
+    await firebase.set(firebase.ref(firebase.rtdb, 'chaos'), `CHAOS:${newIndex}`);
   }
   fetch('http://192.168.1.100/api/chaos', {
     method: 'POST',
@@ -530,8 +511,8 @@ async function verifyPrize() {
   ];
   if (validDomains.some(domain => qrData.startsWith(domain))) {
     const { user, quest } = Object.fromEntries(new URL(qrData).searchParams);
-    const userDoc = await getLocal('users', user) || await db.collection('users').doc(user).get();
-    const beaconsFound = userDoc.data ? userDoc.beaconsFound : userDoc.exists ? userDoc.data().beaconsFound : [];
+    const userDoc = await getLocal('users', user) || await firebase.getDoc(firebase.doc(firebase.db, 'users', user));
+    const beaconsFound = userDoc.data() ? userDoc.beaconsFound : userDoc.exists() ? userDoc.data().beaconsFound : [];
     if (beaconsFound.length >= 5) {
       alert('Prize verified!');
     } else if (confirm('Incomplete quest. Assign credit?')) {
@@ -544,7 +525,7 @@ async function verifyPrize() {
         body: JSON.stringify(userData)
       });
       if (navigator.onLine) {
-        db.collection('users').doc(user).set(userData, { merge: true });
+        firebase.setDoc(firebase.doc(firebase.db, 'users', user), userData, { merge: true });
       }
       alert('Credit assigned');
     } else {
@@ -555,24 +536,3 @@ async function verifyPrize() {
   }
 }
 // Admin: Verify prize QR
-
-// Local status monitoring
-setInterval(() => {
-  if (isAdmin) {
-    fetch('http://192.168.1.100/api/beaconStatus').then(res => res.json()).then(status => {
-      const beacons = ['00', '01', '02', '03', '04'].map(id => ({
-        id: `beacon_${id}`,
-        status: status[`beacon_${id}`] ? 'Online' : 'Offline'
-      }));
-      document.getElementById('beaconStatus').innerText = beacons.map(b => `${b.id}: ${b.status}`).join('\n');
-      if (beacons.some(b => b.status === 'Offline')) {
-        alert('Beacon offline detected!');
-      }
-    }).catch(err => console.error('Beacon status error:', err));
-  }
-}, 30000);
-// Monitor beacon status for admins
-
-// Sync on reconnect
-window.addEventListener('online', syncLocalToFirebase);
-// Sync data when online
