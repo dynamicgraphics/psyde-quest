@@ -7,7 +7,7 @@
   <link rel="manifest" href="/psyde-quest/manifest.json">
   <!-- Link to manifest for PWA -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <!-- Add Press Start 2P font for NES Zelda-style title -->
+  <!-- Press Start 2P font for NES Zelda-style title -->
   <style>
     body {
       background: #000;
@@ -130,7 +130,7 @@
   </div>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
-    import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+    import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
     import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
     const firebaseConfig = {
       apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
@@ -145,9 +145,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const rtdb = getDatabase(app);
-    window.firebase = { app, db, collection, doc, getDoc, setDoc, orderBy, limit, query, rtdb, ref, set };
+    window.firebase = { app, db, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs, rtdb, ref, set };
   </script>
-  <!-- Firebase modular SDK with type="module" and global firebase object -->
+  <!-- Firebase modular SDK with global firebase object -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <!-- jsQR for QR scanning -->
   <script type="module" src="/psyde-quest/app.js"></script>
