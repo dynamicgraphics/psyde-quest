@@ -1,156 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Psyde Quest</title>
-  <link rel="manifest" href="/psyde-quest/manifest.json">
-  <!-- Link to manifest for PWA -->
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <!-- Press Start 2P font for NES Zelda-style title -->
-  <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
-    #title {
-      font-family: 'Press Start 2P', cursive;
-      font-size: 2.5em;
-      color: #ffd700;
-      text-shadow: 2px 2px #000;
-      margin: 20px 0;
-    }
-    #mainMenu {
-      display: block;
-      padding: 20px;
-    }
-    #qrVideo, #mapCanvas, #pulseRing, #simonGame, #mechanics {
-      display: none;
-      margin: 20px auto;
-    }
-    #mapCanvas {
-      width: 200px;
-      height: 200px;
-      border: 1px solid #fff;
-    }
-    #pulseRing {
-      width: 50px;
-      height: 50px;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    #progressBar {
-      width: 80%;
-      height: 20px;
-      background: #333;
-      margin: 20px auto;
-    }
-    #progressFill {
-      height: 100%;
-      background: #fff;
-      width: 0;
-    }
-    #menu {
-      display: none;
-      position: fixed;
-      top: 0;
-      right: 0;
-      background: #000;
-      padding: 10px;
-      border: 1px solid #fff;
-      color: #fff;
-    }
-    button {
-      background: #fff;
-      color: #000;
-      border: 1px solid #000;
-      padding: 10px 20px;
-      margin: 10px;
-      cursor: pointer;
-      font-size: 1em;
-    }
-    button:hover {
-      background: #ccc;
-    }
-    .simon-button {
-      width: 60px;
-      height: 60px;
-      margin: 5px;
-      border-radius: 10px;
-    }
-  </style>
-  <!-- Black-and-white minimal CSS with NES Zelda title -->
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Psyde Quest</title>
+ <link rel="manifest" href="/psyde-quest/manifest.json">
+ <!-- Link to manifest for PWA -->
+ <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+ <!-- Press Start 2P font for NES Zelda-style title -->
+ <style>
+ body {
+ background: #000;
+ color: #fff;
+ font-family: Arial, sans-serif;
+ text-align: center;
+ margin: 0;
+ padding: 0;
+ }
+ #title {
+ font-family: 'Press Start 2P', cursive;
+ font-size: 2.5em;
+ color: #ffd700;
+ text-shadow: 2px 2px #000;
+ margin: 20px 0;
+ }
+ #mainMenu {
+ display: block;
+ padding: 20px;
+ }
+ #qrVideo, #mapCanvas, #pulseRing, #simonGame, #mechanics {
+ display: none;
+ margin: 20px auto;
+ }
+ #mapCanvas {
+ width: 200px;
+ height: 200px;
+ border: 1px solid #fff;
+ }
+ #pulseRing {
+ width: 50px;
+ height: 50px;
+ border: 2px solid #fff;
+ border-radius: 50%;
+ position: absolute;
+ top: 50%;
+ left: 50%;
+ transform: translate(-50%, -50%);
+ }
+ #progressBar {
+ width: 80%;
+ height: 20px;
+ background: #333;
+ margin: 20px auto;
+ }
+ #progressFill {
+ height: 100%;
+ background: #fff;
+ width: 0;
+ }
+ #menu {
+ display: none;
+ position: fixed;
+ top: 0;
+ right: 0;
+ background: #000;
+ padding: 10px;
+ border: 1px solid #fff;
+ color: #fff;
+ }
+ button {
+ background: #fff;
+ color: #000;
+ border: 1px solid #000;
+ padding: 10px 20px;
+ margin: 10px;
+ cursor: pointer;
+ font-size: 1em;
+ }
+ button:hover {
+ background: #ccc;
+ }
+ .simon-button {
+ width: 60px;
+ height: 60px;
+ margin: 5px;
+ border-radius: 10px;
+ }
+ </style>
+ <!-- Black-and-white minimal CSS with NES Zelda title -->
 </head>
 <body>
-  <div id="title">Welcome to Psyde Quest</div>
-  <!-- NES Zelda-style title -->
-  <div id="mainMenu">
-    <button onclick="window.startQuest()">Scan</button>
-    <!-- Use window.startQuest to access global function -->
-    <button onclick="window.toggleMenu()">Menu</button>
-    <!-- Use window.toggleMenu to access global function -->
-  </div>
-  <video id="qrVideo" width="300" height="300"></video>
-  <!-- Hidden video for QR scanning -->
-  <canvas id="mapCanvas"></canvas>
-  <!-- Hidden canvas for navigation map -->
-  <div id="pulseRing"></div>
-  <!-- Hidden pulsing ring for navigation -->
-  <p id="hotCold"></p>
-  <!-- Dynamic text for navigation feedback -->
-  <div id="progressBar"><div id="progressFill"></div></div>
-  <!-- Progress bar for quest progress -->
-  <div id="mechanics"></div>
-  <!-- Hidden container for mechanics -->
-  <div id="simonGame"><div id="simonButtons"></div></div>
-  <!-- Hidden Simon game container -->
-  <div id="menu">
-    <div id="leaderboard"></div>
-    <!-- Leaderboard display -->
-    <button onclick="window.sharePhoto('x')">Share on X</button>
-    <!-- Use window.sharePhoto for global access -->
-    <button onclick="window.sharePhoto('instagram')">Share on Instagram</button>
-    <!-- Use window.sharePhoto for global access -->
-    <div id="beaconStatus"></div>
-    <!-- Admin beacon status -->
-    <button onclick="window.scanBeaconQR()">Map Beacon</button>
-    <!-- Use window.scanBeaconQR for global access -->
-    <button onclick="window.triggerChaos()">Trigger Chaos</button>
-    <!-- Use window.triggerChaos for global access -->
-    <button onclick="window.verifyPrize()">Verify Prize</button>
-    <!-- Use window.verifyPrize for global access -->
-  </div>
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
-    import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
-    import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
-    const firebaseConfig = {
-      apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
-      authDomain: "psydequest-88a94.firebaseapp.com",
-      databaseURL: "https://psydequest-88a94-default-rtdb.firebaseio.com",
-      projectId: "psydequest-88a94",
-      storageBucket: "psydequest-88a94.firebasestorage.app",
-      messagingSenderId: "36170780281",
-      appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
-      measurementId: "G-JN8T08ZB7R"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const rtdb = getDatabase(app);
-    window.firebase = { app, db, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs, rtdb, ref, set };
-  </script>
-  <!-- Firebase modular SDK with global firebase object -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <!-- jsQR for QR scanning -->
-  <script type="module" src="/psyde-quest/app.js"></script>
-  <!-- Main app logic as module -->
+ <div id="title">Welcome to Psyde Quest</div>
+ <!-- NES Zelda-style title -->
+ <div id="mainMenu">
+ <button id="scanButton">Scan</button>
+ <!-- Use ID for event listener instead of onclick -->
+ <button id="menuButton">Menu</button>
+ <!-- Use ID for event listener instead of onclick -->
+ </div>
+ <video id="qrVideo" width="300" height="300"></video>
+ <!-- Hidden video for QR scanning -->
+ <canvas id="mapCanvas"></canvas>
+ <!-- Hidden canvas for navigation map -->
+ <div id="pulseRing"></div>
+ <!-- Hidden pulsing ring for navigation -->
+ <p id="hotCold"></p>
+ <!-- Dynamic text for navigation feedback -->
+ <div id="progressBar"><div id="progressFill"></div></div>
+ <!-- Progress bar for quest progress -->
+ <div id="mechanics"></div>
+ <!-- Hidden container for mechanics -->
+ <div id="simonGame"><div id="simonButtons"></div></div>
+ <!-- Hidden Simon game container -->
+ <div id="menu">
+ <div id="leaderboard"></div>
+ <!-- Leaderboard display -->
+ <button id="shareXButton">Share on X</button>
+ <!-- Use ID for event listener -->
+ <button id="shareInstagramButton">Share on Instagram</button>
+ <!-- Use ID for event listener -->
+ <div id="beaconStatus"></div>
+ <!-- Admin beacon status -->
+ <button id="mapBeaconButton">Map Beacon</button>
+ <!-- Use ID for event listener -->
+ <button id="triggerChaosButton">Trigger Chaos</button>
+ <!-- Use ID for event listener -->
+ <button id="verifyPrizeButton">Verify Prize</button>
+ <!-- Use ID for event listener -->
+ </div>
+ <script type="module">
+ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
+ import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+ import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
+ const firebaseConfig = {
+ apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
+ authDomain: "psydequest-88a94.firebaseapp.com",
+ databaseURL: "https://psydequest-88a94-default-rtdb.firebaseio.com",
+ projectId: "psydequest-88a94",
+ storageBucket: "psydequest-88a94.firebasestorage.app",
+ messagingSenderId: "36170780281",
+ appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
+ measurementId: "G-JN8T08ZB7R"
+ };
+ const app = initializeApp(firebaseConfig);
+ const db = getFirestore(app);
+ const rtdb = getDatabase(app);
+ window.firebase = { app, db, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs, rtdb, ref, set };
+ </script>
+ <!-- Firebase modular SDK with global firebase object -->
+ <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+ <!-- jsQR for QR scanning -->
+ <script type="module" src="/psyde-quest/app.js"></script>
+ <!-- Main app logic as module -->
 </body>
 </html>
