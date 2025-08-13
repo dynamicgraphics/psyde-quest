@@ -1,7 +1,6 @@
-let video, stream, userId = null, currentBeacon = null, questActive = false;
 const isAdmin = localStorage.getItem('isAdmin') === 'true';
-let lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
-// Global variables moved to top for initialization
+let video, stream, userId = null, currentBeacon = null, questActive = false, lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
+// Global variables declared first to avoid initialization errors
 
 // IndexedDB setup
 const idb = indexedDB.open('PsydeQuest', 1);
@@ -183,8 +182,8 @@ async function startQuest() {
         return;
       }
       const beaconDoc = await getLocal('beacons', beaconId) || await firebase.getDoc(firebase.doc(firebase.db, 'beacons', beaconId));
-      if (beaconDoc && (beaconDoc.data() || beaconDoc.exists())) {
-        currentBeacon = beaconDoc.data() ? { id: beaconId, data: () => beaconDoc } : beaconDoc;
+      if (beaconDoc && beaconDoc.exists()) {
+        currentBeacon = { id: beaconId, data: () => beaconDoc.data() };
         startNavigation();
       } else {
         alert('Beacon not found!');
@@ -536,3 +535,24 @@ async function verifyPrize() {
   }
 }
 // Admin: Verify prize QR
+
+// Local status monitoring
+setInterval(() => {
+  if (isAdmin) {
+    fetch('http://192.168.1.100/api/beaconStatus').then(res => res.json()).then(status => {
+      const beacons = ['00', '01', '02', '03', '04'].map(id => ({
+        id: `beacon_${id}`,
+        status: status[`beacon_${id}`] ? 'Online' : 'Offline'
+      }));
+      document.getElementById('beaconStatus').innerText = beacons.map(b => `${b.id}: ${b.status}`).join('\n');
+      if (beacons.some(b => b.status === 'Offline')) {
+        alert('Beacon offline detected!');
+      }
+    }).catch(err => console.error('Beacon status error:', err));
+  }
+}, 30000);
+// Monitor beacon status for admins
+
+// Sync on reconnect
+window.addEventListener('online', syncLocalToFirebase);
+// Sync data when online
