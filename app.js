@@ -2,7 +2,6 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase
 import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
 
-// Firebase is now initialized inside the module
 const firebaseConfig = {
   apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
   authDomain: "psydequest-88a94.firebaseapp.com",
@@ -17,11 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
-
 const isAdmin = localStorage.getItem('isAdmin') === 'true';
 let video, stream, userId = null, currentBeacon = null, questActive = false, lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
-
-// IndexedDB setup
 const idb = indexedDB.open('PsydeQuest', 1);
 idb.onupgradeneeded = () => {
   const db = idb.result;
@@ -36,39 +32,31 @@ async function saveLocal(store, data) {
     tx.oncomplete = () => resolve();
   });
 }
-
 async function getLocal(store, key) {
   return new Promise(resolve => {
     const tx = idb.result.transaction([store], 'readonly');
     tx.objectStore(store).get(key).onsuccess = e => resolve(e.target.result);
   });
 }
-
 async function syncLocalToFirebase() {
   if (!navigator.onLine) return;
   const tx = idb.result.transaction(['users', 'beacons'], 'readonly');
   const userStore = tx.objectStore('users');
   const beaconStore = tx.objectStore('beacons');
-
   userStore.getAll().onsuccess = e => {
     e.target.result.forEach(user => {
       setDoc(doc(db, 'users', user.id), user, { merge: true });
     });
   };
-
   beaconStore.getAll().onsuccess = e => {
     e.target.result.forEach(beacon => {
       setDoc(doc(db, 'beacons', beacon.deviceId), beacon, { merge: true });
     });
   };
 }
-
-// Service Worker registration
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/psyde-quest/sw.js').catch(err => console.error('Service Worker error:', err));
 }
-
-// Add event listeners for buttons
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scanButton').addEventListener('click', startQuest);
   document.getElementById('menuButton').addEventListener('click', toggleMenu);
@@ -79,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
 });
 
-// QR code scanning
 async function scanQR() {
   if (Date.now() - lastQRScan < 5000) {
     alert('Please wait 5 seconds between scans');
@@ -95,7 +82,6 @@ async function scanQR() {
     return new Promise(resolve => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-
       function scan() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -119,13 +105,11 @@ async function scanQR() {
   }
 }
 
-// Pulsing ring animation
 function animatePulseRing(rssi) {
   const ring = document.getElementById('pulseRing');
   ring.style.display = 'block';
   let scale = 1.0;
   let speed = rssi > -60 ? 500 : rssi > -80 ? 1000 : 1500;
-  
   function pulse() {
     ring.style.transform = `scale(${scale})`;
     ring.style.opacity = scale === 1.0 ? 0.8 : 0.5;
@@ -134,8 +118,6 @@ function animatePulseRing(rssi) {
   }
   pulse();
 }
-
-// Overhead map and directional indicator
 function drawMap(playerPos, beaconPos, heading) {
   const canvas = document.getElementById('mapCanvas');
   canvas.style.display = 'block';
@@ -166,8 +148,6 @@ function drawMap(playerPos, beaconPos, heading) {
     navigator.vibrate(100);
   }
 }
-
-// Start quest
 async function startQuest() {
   if (questActive) {
     alert('Quest already active!');
@@ -183,8 +163,8 @@ async function startQuest() {
       throw new Error('BLE permission needed: ' + err.message);
     });
     questActive = true;
-    document.getElementById('welcomeContainer').style.display = 'none'; // Hide welcome screen
-    document.getElementById('progressBar').style.display = 'block'; // Show progress bar
+    document.getElementById('welcomeContainer').style.display = 'none';
+    document.getElementById('progressBar').style.display = 'block';
     const qrData = await scanQR();
     if (!qrData) {
       questActive = false;
@@ -236,8 +216,6 @@ async function startQuest() {
     document.getElementById('progressBar').style.display = 'none';
   }
 }
-
-// Navigation
 async function startNavigation() {
   let lastPosition = null;
   const geolocationWatch = navigator.geolocation.watchPosition(
@@ -283,7 +261,6 @@ async function startNavigation() {
     alert('BLE error: ' + error.message);
   }
 }
-
 function calculateDistance(coords1, coords2) {
   const R = 6371e3;
   const lat1 = coords1.latitude * Math.PI / 180;
@@ -294,13 +271,11 @@ function calculateDistance(coords1, coords2) {
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
-
 async function updateProgress() {
   const userData = await getLocal('users', userId) || { beaconsFound: [] };
   const progress = userData.beaconsFound.length * 20;
   document.getElementById('progressFill').style.width = `${progress}%`;
 }
-
 async function updateLeaderboard() {
   const leaderboard = document.getElementById('leaderboard');
   const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(10));
@@ -312,7 +287,6 @@ async function updateLeaderboard() {
   });
   leaderboard.innerHTML = html;
 }
-
 async function sharePhoto(platform) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -332,13 +306,11 @@ async function sharePhoto(platform) {
   };
   input.click();
 }
-
 function toggleMenu() {
   const menu = document.getElementById('menu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   if (menu.style.display === 'block') updateLeaderboard();
 }
-
 let lastMechanicAttempt = 0;
 async function triggerMechanic(type) {
   if (Date.now() - lastMechanicAttempt < 3000) {
@@ -364,7 +336,6 @@ async function triggerMechanic(type) {
     navigator.geolocation.watchPosition(handleSlowMovement, () => alert('GPS error'), { enableHighAccuracy: true });
   }
 }
-
 function handleShake(event) {
   const acceleration = event.accelerationIncludingGravity || event.acceleration;
   if (!acceleration) {
@@ -378,7 +349,6 @@ function handleShake(event) {
     window.addEventListener('devicemotion', handleShake, { once: true });
   }
 }
-
 function checkRiddle() {
   if (document.getElementById('riddleAnswer').value.toLowerCase() === 'piano') {
     completeBeacon();
@@ -386,7 +356,6 @@ function checkRiddle() {
     alert('Try again!');
   }
 }
-
 let simonSequence = [], playerSequence = [];
 function startSimonGame() {
   simonSequence = Array(5).fill().map(() => Math.floor(Math.random() * 4));
@@ -403,7 +372,6 @@ function startSimonGame() {
   document.getElementById('simonYellow').addEventListener('click', () => playerSimon(3));
   playSimonSequence();
 }
-
 function playSimonSequence() {
   let i = 0;
   const interval = setInterval(() => {
@@ -418,7 +386,6 @@ function playSimonSequence() {
     i++;
   }, 1000);
 }
-
 function playerSimon(color) {
   playerSequence.push(color);
   if (playerSequence.length === simonSequence.length) {
@@ -431,7 +398,6 @@ function playerSimon(color) {
     }
   }
 }
-
 function handleSlowMovement(pos) {
   const speed = pos.coords.speed || 0;
   if (speed < 0.5) {
@@ -440,7 +406,6 @@ function handleSlowMovement(pos) {
     document.getElementById('mechanics').innerHTML = `<p>Move slowly! Speed: ${speed.toFixed(2)} m/s</p>`;
   }
 }
-
 async function completeBeacon() {
   const userData = await getLocal('users', userId) || { beaconsFound: [], score: 0 };
   if (!userData.beaconsFound.includes(currentBeacon.id)) {
@@ -468,7 +433,6 @@ async function completeBeacon() {
     startQuest();
   }
 }
-
 async function scanBeaconQR() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
@@ -512,7 +476,6 @@ async function scanBeaconQR() {
     alert('Invalid QR code format.');
   }
 }
-
 async function triggerChaos() {
   if (!isAdmin) return alert('Admin access required');
   const newIndex = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
@@ -526,7 +489,6 @@ async function triggerChaos() {
   });
   alert('Chaos triggered!');
 }
-
 async function verifyPrize() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
