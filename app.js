@@ -1,6 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import { getFirestore, collection, doc, getDoc, setDoc, orderBy, limit, query, getDocs } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js';
+// Import Firebase SDK modules
 
 const firebaseConfig = {
   apiKey: "AIzaSyA_tzSRlW0Xww_wGRN9QH2JRsAe7g5K9gs",
@@ -12,19 +13,23 @@ const firebaseConfig = {
   appId: "1:36170780281:web:fe17f7fa10ab09e95e8ea8",
   measurementId: "G-JN8T08ZB7R"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const rtdb = getDatabase(app);
+// Initialize Firebase
+
 const isAdmin = localStorage.getItem('isAdmin') === 'true';
 let video, stream, userId = null, currentBeacon = null, questActive = false, lastQRScan = 0, lastRSSI = -100, lastHeading = 0;
+// Global variables declared first
+
+// IndexedDB setup
 const idb = indexedDB.open('PsydeQuest', 1);
 idb.onupgradeneeded = () => {
   const db = idb.result;
   db.createObjectStore('users', { keyPath: 'id' });
   db.createObjectStore('beacons', { keyPath: 'deviceId' });
 };
-
+// Set up IndexedDB for offline storage
 async function saveLocal(store, data) {
   return new Promise(resolve => {
     const tx = idb.result.transaction([store], 'readwrite');
@@ -32,12 +37,14 @@ async function saveLocal(store, data) {
     tx.oncomplete = () => resolve();
   });
 }
+// Save data to IndexedDB
 async function getLocal(store, key) {
   return new Promise(resolve => {
     const tx = idb.result.transaction([store], 'readonly');
     tx.objectStore(store).get(key).onsuccess = e => resolve(e.target.result);
   });
 }
+// Retrieve data from IndexedDB
 async function syncLocalToFirebase() {
   if (!navigator.onLine) return;
   const tx = idb.result.transaction(['users', 'beacons'], 'readonly');
@@ -54,83 +61,91 @@ async function syncLocalToFirebase() {
     });
   };
 }
+// Sync IndexedDB to Firebase when online
+
+// Service Worker registration
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/psyde-quest/sw.js').catch(err => console.error('Service Worker error:', err));
 }
+// Register Service Worker for offline support
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('firstVisitComplete')) {
-        document.getElementById('welcomeSplash').style.display = 'none';
-        document.getElementById('welcomeContainer').style.display = 'flex';
-        setupEventListeners();
+// Check and request permissions
+async function checkPermissions() {
+  let gpsStatus = 'Unknown';
+  let bleStatus = 'Unknown';
+  let cameraStatus = 'Unknown';
+  try {
+    await navigator.geolocation.getCurrentPosition(
+      () => { gpsStatus = 'Granted'; },
+      err => { gpsStatus = `Denied: ${err.message}`; },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  } catch (err) {
+    gpsStatus = `Error: ${err.message}`;
+  }
+  try {
+    if ('bluetooth' in navigator) {
+      await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }], optionalServices: [0xFEAA] });
+      bleStatus = 'Granted';
     } else {
-        document.getElementById('welcomeSplash').style.display = 'flex';
-        document.getElementById('welcomeContainer').style.display = 'none';
-        document.getElementById('splashContinueButton').addEventListener('click', handleFirstVisit);
+      bleStatus = 'Not supported';
     }
-});
-
-function setupEventListeners() {
-    document.getElementById('scanButton').addEventListener('click', startQuest);
-    document.getElementById('menuButton').addEventListener('click', toggleMenu);
-    document.getElementById('permissionsButton').addEventListener('click', checkPermissionsStatus);
-    document.getElementById('shareXButton').addEventListener('click', () => sharePhoto('x'));
-    document.getElementById('shareInstagramButton').addEventListener('click', () => sharePhoto('instagram'));
-    document.getElementById('mapBeaconButton').addEventListener('click', scanBeaconQR);
-    document.getElementById('triggerChaosButton').addEventListener('click', triggerChaos);
-    document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
+  } catch (err) {
+    bleStatus = `Denied: ${err.message}`;
+  }
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    cameraStatus = 'Granted';
+  } catch (err) {
+    cameraStatus = `Denied: ${err.message}`;
+  }
+  alert(`Permissions:\nGPS: ${gpsStatus}\nBluetooth: ${bleStatus}\nCamera: ${cameraStatus}`);
+  return { gpsStatus, bleStatus, cameraStatus };
 }
+// Check GPS, BLE, and camera permissions
 
-
-async function handleFirstVisit() {
-    try {
-        await navigator.geolocation.getCurrentPosition(
-            () => {},
-            err => { throw new Error('GPS permission needed: ' + err.message); }, { enableHighAccuracy: true }
-        );
-        await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
-            throw new Error('BLE permission needed: ' + err.message);
-        });
+// Add event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const splashContinueButton = document.getElementById('splashContinueButton');
+  if (localStorage.getItem('firstVisitComplete')) {
+    document.getElementById('welcomeSplash').style.display = 'none';
+    document.getElementById('welcomeContainer').style.display = 'flex';
+    setupEventListeners();
+  } else if (splashContinueButton) {
+    splashContinueButton.addEventListener('click', async () => {
+      const { gpsStatus, bleStatus, cameraStatus } = await checkPermissions();
+      if (gpsStatus === 'Granted' && (bleStatus === 'Granted' || bleStatus === 'Not supported') && cameraStatus === 'Granted') {
         localStorage.setItem('firstVisitComplete', 'true');
         document.getElementById('welcomeSplash').style.display = 'none';
         document.getElementById('welcomeContainer').style.display = 'flex';
         setupEventListeners();
-    } catch (error) {
-        console.error('Permission error:', error);
-        alert('Permission error: ' + error.message);
-        document.getElementById('welcomeSplash').style.display = 'none';
-        document.getElementById('welcomeContainer').style.display = 'flex';
-    }
+      } else {
+        alert('Please grant GPS, Bluetooth, and Camera permissions in browser settings to continue.');
+      }
+    });
+  }
+});
+// Initialize UI based on first visit
+
+function setupEventListeners() {
+  const buttons = {
+    scanButton: startQuest,
+    menuButton: toggleMenu,
+    permissionsButton: checkPermissions,
+    shareXButton: () => sharePhoto('x'),
+    shareInstagramButton: () => sharePhoto('instagram'),
+    mapBeaconButton: scanBeaconQR,
+    triggerChaosButton: triggerChaos,
+    verifyPrizeButton: verifyPrize
+  };
+  Object.entries(buttons).forEach(([id, handler]) => {
+    const button = document.getElementById(id);
+    if (button) button.addEventListener('click', handler);
+  });
 }
+// Attach event listeners for all buttons
 
-async function checkPermissionsStatus() {
-  let geoStatus = { state: 'prompt' };
-  let bleStatus = { state: 'prompt' };
-
-  if ('geolocation' in navigator) {
-    geoStatus = await navigator.permissions.query({ name: 'geolocation' });
-  }
-
-  if ('bluetooth' in navigator) {
-    bleStatus = await navigator.permissions.query({ name: 'bluetooth' });
-  }
-
-  let message = 'All required permissions are enabled. You are good to go!';
-  if (geoStatus.state === 'denied' || bleStatus.state === 'denied') {
-    let deniedPermissions = [];
-    if (geoStatus.state === 'denied') deniedPermissions.push('Location (GPS)');
-    if (bleStatus.state === 'denied') deniedPermissions.push('Bluetooth');
-    message = `The following permissions are blocked: ${deniedPermissions.join(' and ')}. Please enable them in your browser settings to continue.`;
-  } else if (geoStatus.state === 'prompt' || bleStatus.state === 'prompt') {
-    let pendingPermissions = [];
-    if (geoStatus.state === 'prompt') pendingPermissions.push('Location (GPS)');
-    if (bleStatus.state === 'prompt') pendingPermissions.push('Bluetooth');
-    message = `The following permissions are ready to be requested: ${pendingPermissions.join(' and ')}. Click Scan to continue.`;
-  }
-
-  alert(message);
-}
-
+// QR code scanning
 async function scanQR() {
   if (Date.now() - lastQRScan < 5000) {
     alert('Please wait 5 seconds between scans');
@@ -164,24 +179,32 @@ async function scanQR() {
     });
   } catch (err) {
     console.error('Camera error:', err);
-    alert('Camera access denied. Please allow camera permissions.');
+    alert('Camera access denied. Please allow camera permissions in browser settings.');
     return null;
   }
 }
+// Scan QR code with camera, show video, hide after scan
 
+// Pulsing ring animation
 function animatePulseRing(rssi) {
   const ring = document.getElementById('pulseRing');
   ring.style.display = 'block';
-  let scale = 1.0;
+  let scale = rssi > -60 ? 0.8 : rssi > -80 ? 1.0 : 1.2;
   let speed = rssi > -60 ? 500 : rssi > -80 ? 1000 : 1500;
+  let opacity = 0.5;
   function pulse() {
     ring.style.transform = `scale(${scale})`;
-    ring.style.opacity = scale === 1.0 ? 0.8 : 0.5;
-    scale = scale === 1.0 ? 1.2 : 1.0;
+    ring.style.opacity = opacity;
+    scale += (rssi > -60 ? 0.02 : 0.01) * (opacity === 0.5 ? 1 : -1);
+    opacity = opacity === 0.5 ? 0.8 : 0.5;
+    if (scale > 1.2 || scale < 0.8) scale = 1.0;
     setTimeout(pulse, speed);
   }
   pulse();
 }
+// Show and animate pulsing ring based on RSSI
+
+// Overhead map and directional indicator
 function drawMap(playerPos, beaconPos, heading) {
   const canvas = document.getElementById('mapCanvas');
   canvas.style.display = 'block';
@@ -212,55 +235,145 @@ function drawMap(playerPos, beaconPos, heading) {
     navigator.vibrate(100);
   }
 }
+// Show and draw map with player, beacon, and directional arrow
 
+// Start quest
 async function startQuest() {
   if (questActive) {
     alert('Quest already active!');
     return;
   }
   userId = 'user_' + Date.now();
-  document.getElementById('welcomeContainer').style.display = 'none';
-
-  const qrData = await scanQR();
-  if (!qrData) {
+  try {
+    await navigator.geolocation.getCurrentPosition(
+      () => {},
+      err => { throw new Error('GPS permission needed: ' + err.message); },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+    if ('bluetooth' in navigator) {
+      await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }], optionalServices: [0xFEAA] });
+    } else {
+      alert('Bluetooth not supported. Some features may be limited.');
+    }
+    questActive = true;
+    document.getElementById('welcomeContainer').style.display = 'none';
+    document.getElementById('title').style.display = 'none';
+    document.getElementById('progressBar').style.display = 'block';
+    const qrData = await scanQR();
+    if (!qrData) {
       questActive = false;
       document.getElementById('welcomeContainer').style.display = 'flex';
+      document.getElementById('title').style.display = 'block';
+      document.getElementById('progressBar').style.display = 'none';
       return;
-  }
-  const validDomains = [
+    }
+    const validDomains = [
       'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
       'https://dynamicgraphics.github.io/psyde-quest/start',
       'http://192.168.1.100/start'
-  ];
-  if (validDomains.some(domain => qrData.startsWith(domain))) {
+    ];
+    if (validDomains.some(domain => qrData.startsWith(domain))) {
       const beaconId = new URL(qrData).searchParams.get('beacon');
       if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
-          alert('Invalid beacon ID format!');
-          questActive = false;
-          document.getElementById('welcomeContainer').style.display = 'flex';
-          return;
+        alert('Invalid beacon ID format!');
+        questActive = false;
+        document.getElementById('welcomeContainer').style.display = 'flex';
+        document.getElementById('title').style.display = 'block';
+        document.getElementById('progressBar').style.display = 'none';
+        return;
       }
       let beaconDoc = await getLocal('beacons', beaconId);
       if (!beaconDoc && navigator.onLine) {
-          const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
-          if (firebaseDoc.exists()) {
-              beaconDoc = firebaseDoc.data();
-          }
+        const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
+        if (firebaseDoc.exists()) {
+          beaconDoc = firebaseDoc.data();
+        }
       }
       if (beaconDoc) {
-          currentBeacon = { id: beaconId, data: () => beaconDoc };
-          startNavigation();
+        currentBeacon = { id: beaconId, data: () => beaconDoc };
+        startNavigation();
       } else {
-          alert('Beacon not found!');
-          questActive = false;
-          document.getElementById('welcomeContainer').style.display = 'flex';
+        alert('Beacon not found!');
+        questActive = false;
+        document.getElementById('welcomeContainer').style.display = 'flex';
+        document.getElementById('title').style.display = 'block';
+        document.getElementById('progressBar').style.display = 'none';
       }
-  } else {
+    } else {
       alert('Invalid QR code!');
       questActive = false;
       document.getElementById('welcomeContainer').style.display = 'flex';
+      document.getElementById('title').style.display = 'block';
+      document.getElementById('progressBar').style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Start quest error:', error);
+    alert(`Error starting quest: ${error.message}\nPlease check permissions in browser settings.`);
+    questActive = false;
+    document.getElementById('welcomeContainer').style.display = 'flex';
+    document.getElementById('title').style.display = 'block';
+    document.getElementById('progressBar').style.display = 'none';
   }
 }
+// Start quest, hide container/title, show progress bar
+
+// Navigation
+async function startNavigation() {
+  let lastPosition = null;
+  const geolocationWatch = navigator.geolocation.watchPosition(
+    pos => {
+      lastPosition = pos;
+      const distance = calculateDistance(pos.coords, currentBeacon.data());
+      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m`;
+      drawMap(pos.coords, currentBeacon.data(), lastHeading);
+      updateProgress();
+    },
+    err => alert('GPS error: ' + err.message),
+    { enableHighAccuracy: true }
+  );
+  const orientationHandler = event => {
+    lastHeading = event.alpha || 0;
+    if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
+  };
+  window.addEventListener('deviceorientation', orientationHandler);
+  if ('bluetooth' in navigator) {
+    try {
+      const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }], optionalServices: [0xFEAA] });
+      const advertisementHandler = event => {
+        const rssi = event.rssi;
+        lastRSSI = rssi;
+        const distance = lastPosition ? calculateDistance(lastPosition.coords, currentBeacon.data()) : Infinity;
+        if (distance > 10 && rssi > -80) {
+          alert('Suspicious GPS/BLE mismatch!');
+          return;
+        }
+        document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m | ${rssi > -60 ? 'Hot!' : rssi > -80 ? 'Warm' : 'Cold'}`;
+        animatePulseRing(rssi);
+        if ('vibrate' in navigator) {
+          const pulseDuration = rssi > -60 ? 50 : rssi > -80 ? 100 : 200;
+          navigator.vibrate(pulseDuration);
+        }
+        if (rssi > -60) {
+          const serviceData = event.serviceData.get(0xFEAA);
+          if (serviceData) {
+            const instanceId = Array.from(new Uint8Array(serviceData)).slice(10, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+            if (instanceId === currentBeacon.data().instanceId) {
+              triggerMechanic(currentBeacon.data().mechanic);
+            }
+          }
+        }
+      };
+      device.addEventListener('advertisementreceived', advertisementHandler);
+      await device.watchAdvertisements();
+    } catch (error) {
+      console.error('BLE error:', error);
+      alert('BLE error: ' + error.message);
+    }
+  } else {
+    alert('Bluetooth not supported. Navigation will rely on GPS only.');
+  }
+}
+// Handle navigation with GPS, BLE, and UI updates
 
 function calculateDistance(coords1, coords2) {
   const R = 6371e3;
@@ -269,25 +382,36 @@ function calculateDistance(coords1, coords2) {
   const dLat = (coords2.lat - coords1.latitude) * Math.PI / 180;
   const dLon = (coords2.lng - coords1.longitude) * Math.PI / 180;
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
+// Calculate distance between coordinates
+
 async function updateProgress() {
-  const userData = await getLocal('users', userId) || { beaconsFound: [] };
+  const userData = await getLocal('users', userId) || { beaconsFound: [], score: 0 };
   const progress = userData.beaconsFound.length * 20;
   document.getElementById('progressFill').style.width = `${progress}%`;
 }
+// Update progress bar based on beacons found
+
 async function updateLeaderboard() {
   const leaderboard = document.getElementById('leaderboard');
   const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(10));
-  const snapshot = await getDocs(q);
-  let html = '<h3>Leaderboard</h3>';
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    html += `<p>${data.id.slice(5, 10)}: ${data.score} pts</p>`;
-  });
-  leaderboard.innerHTML = html;
+  try {
+    const snapshot = await getDocs(q);
+    let html = '<h3>Leaderboard</h3>';
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      html += `<p>${data.id.slice(5, 10)}: ${data.score} pts</p>`;
+    });
+    leaderboard.innerHTML = html;
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    leaderboard.innerHTML = '<h3>Leaderboard</h3><p>Error loading leaderboard</p>';
+  }
 }
+// Fetch and display top 10 players
+
 async function sharePhoto(platform) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -296,22 +420,31 @@ async function sharePhoto(platform) {
     const file = input.files[0];
     if (!file) return;
     if (navigator.share) {
-      await navigator.share({
-        files: [file],
-        title: 'Psyde Quest',
-        text: `Found a beacon in Psyde Quest! #PsydeQuest @psyde.quest`
-      });
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Psyde Quest',
+          text: `Found a beacon in Psyde Quest! #PsydeQuest @psyde.quest`
+        });
+      } catch (error) {
+        console.error('Share error:', error);
+        alert('Error sharing photo. Please try again.');
+      }
     } else {
       alert('Photo sharing not supported. Please upload manually to @psyde.quest');
     }
   };
   input.click();
 }
+// Share photo to X or Instagram
+
 function toggleMenu() {
   const menu = document.getElementById('menu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   if (menu.style.display === 'block') updateLeaderboard();
 }
+// Toggle menu visibility and update leaderboard
+
 let lastMechanicAttempt = 0;
 async function triggerMechanic(type) {
   if (Date.now() - lastMechanicAttempt < 3000) {
@@ -337,10 +470,13 @@ async function triggerMechanic(type) {
     navigator.geolocation.watchPosition(handleSlowMovement, () => alert('GPS error'), { enableHighAccuracy: true });
   }
 }
+// Trigger phone-based mechanics
+
 function handleShake(event) {
   const acceleration = event.accelerationIncludingGravity || event.acceleration;
   if (!acceleration) {
-    console.warn("Acceleration data not available.");
+    console.warn('Acceleration data not available');
+    window.addEventListener('devicemotion', handleShake, { once: true });
     return;
   }
   const threshold = 15;
@@ -350,6 +486,8 @@ function handleShake(event) {
     window.addEventListener('devicemotion', handleShake, { once: true });
   }
 }
+// Handle shake mechanic
+
 function checkRiddle() {
   if (document.getElementById('riddleAnswer').value.toLowerCase() === 'piano') {
     completeBeacon();
@@ -357,6 +495,8 @@ function checkRiddle() {
     alert('Try again!');
   }
 }
+// Check riddle answer
+
 let simonSequence = [], playerSequence = [];
 function startSimonGame() {
   simonSequence = Array(5).fill().map(() => Math.floor(Math.random() * 4));
@@ -373,6 +513,8 @@ function startSimonGame() {
   document.getElementById('simonYellow').addEventListener('click', () => playerSimon(3));
   playSimonSequence();
 }
+// Start Simon game
+
 function playSimonSequence() {
   let i = 0;
   const interval = setInterval(() => {
@@ -387,6 +529,8 @@ function playSimonSequence() {
     i++;
   }, 1000);
 }
+// Play Simon sequence
+
 function playerSimon(color) {
   playerSequence.push(color);
   if (playerSequence.length === simonSequence.length) {
@@ -399,6 +543,8 @@ function playerSimon(color) {
     }
   }
 }
+// Handle Simon player input
+
 function handleSlowMovement(pos) {
   const speed = pos.coords.speed || 0;
   if (speed < 0.5) {
@@ -407,19 +553,25 @@ function handleSlowMovement(pos) {
     document.getElementById('mechanics').innerHTML = `<p>Move slowly! Speed: ${speed.toFixed(2)} m/s</p>`;
   }
 }
+// Handle slow movement mechanic
+
 async function completeBeacon() {
-  const userData = await getLocal('users', userId) || { beaconsFound: [] };
+  const userData = await getLocal('users', userId) || { id: userId, beaconsFound: [], score: 0 };
   if (!userData.beaconsFound.includes(currentBeacon.id)) {
-      userData.beaconsFound.push(currentBeacon.id);
-      const isAdvanced = ['beacon_03', 'beacon_04'].includes(currentBeacon.id);
-      userData.score += isAdvanced ? 200 : 100;
+    userData.beaconsFound.push(currentBeacon.id);
+    const isAdvanced = ['beacon_03', 'beacon_04'].includes(currentBeacon.id);
+    userData.score = (userData.score || 0) + (isAdvanced ? 200 : 100);
   }
   await saveLocal('users', userData);
-  fetch('http://192.168.1.100/api/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userData)
-  });
+  try {
+    await fetch('http://192.168.1.100/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+  } catch (error) {
+    console.error('Local server error:', error);
+  }
   if (navigator.onLine) {
     await setDoc(doc(db, 'users', userId), userData, { merge: true });
   }
@@ -429,11 +581,14 @@ async function completeBeacon() {
     document.getElementById('hotCold').innerText = `Prize QR: ${prizeQR}`;
     questActive = false;
     document.getElementById('welcomeContainer').style.display = 'flex';
+    document.getElementById('title').style.display = 'block';
     document.getElementById('progressBar').style.display = 'none';
   } else {
     startQuest();
   }
 }
+// Complete beacon, update score, handle prize
+
 async function scanBeaconQR() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
@@ -460,16 +615,20 @@ async function scanBeaconQR() {
           mechanic: ['shake', 'riddle', 'simon', 'slow'][Math.floor(Math.random() * 4)]
         };
         saveLocal('beacons', beaconData);
-        fetch('http://192.168.1.100/api/beaconStatus', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: beaconId, status: 'ALIVE' })
-        });
+        try {
+          fetch('http://192.168.1.100/api/beaconStatus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: beaconId, status: 'ALIVE' })
+          });
+        } catch (error) {
+          console.error('Local server error:', error);
+        }
         if (navigator.onLine) {
           setDoc(doc(db, 'beacons', beaconId), beaconData);
         }
         alert(`Beacon ${beaconId} mapped at (${pos.coords.latitude}, ${pos.coords.longitude})`);
-      }, () => alert('GPS permission needed'));
+      }, () => alert('GPS permission needed. Please enable in browser settings.'));
     } else {
       alert('Invalid QR code!');
     }
@@ -477,19 +636,27 @@ async function scanBeaconQR() {
     alert('Invalid QR code format.');
   }
 }
+// Admin: Map beacon with QR and GPS
+
 async function triggerChaos() {
   if (!isAdmin) return alert('Admin access required');
   const newIndex = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
   if (navigator.onLine) {
     await set(ref(rtdb, 'chaos'), `CHAOS:${newIndex}`);
   }
-  fetch('http://192.168.1.100/api/chaos', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chaos: `CHAOS:${newIndex}` })
-  });
+  try {
+    await fetch('http://192.168.1.100/api/chaos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chaos: `CHAOS:${newIndex}` })
+    });
+  } catch (error) {
+    console.error('Local server error:', error);
+  }
   alert('Chaos triggered!');
 }
+// Admin: Trigger chaos event
+
 async function verifyPrize() {
   if (!isAdmin) return alert('Admin access required');
   const qrData = await scanQR();
@@ -505,10 +672,10 @@ async function verifyPrize() {
       const { user, quest } = Object.fromEntries(url.searchParams);
       let userDoc = await getLocal('users', user);
       if (!userDoc && navigator.onLine) {
-          const firebaseDoc = await getDoc(doc(db, 'users', user));
-          if (firebaseDoc.exists()) {
-              userDoc = firebaseDoc.data();
-          }
+        const firebaseDoc = await getDoc(doc(db, 'users', user));
+        if (firebaseDoc.exists()) {
+          userDoc = firebaseDoc.data();
+        }
       }
       const beaconsFound = userDoc ? userDoc.beaconsFound : [];
       if (beaconsFound && beaconsFound.length >= 5) {
@@ -520,11 +687,15 @@ async function verifyPrize() {
           userData.score += 100;
         }
         await saveLocal('users', userData);
-        fetch('http://192.168.1.100/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userData)
-        });
+        try {
+          await fetch('http://192.168.1.100/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+        } catch (error) {
+          console.error('Local server error:', error);
+        }
         if (navigator.onLine) {
           setDoc(doc(db, 'users', user), userData, { merge: true });
         }
@@ -539,48 +710,30 @@ async function verifyPrize() {
     alert('Invalid prize QR format.');
   }
 }
-async function startNavigation() {
-  let lastPosition = null;
-  const geolocationWatch = navigator.geolocation.watchPosition(
-    pos => {
-      lastPosition = pos;
-      const distance = calculateDistance(pos.coords, currentBeacon.data());
-      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m`;
-      drawMap(pos.coords, currentBeacon.data(), lastHeading);
-      updateProgress();
-    },
-    err => alert('GPS error: ' + err.message), { enableHighAccuracy: true }
-  );
-  const orientationHandler = event => {
-    lastHeading = event.alpha || 0;
-    if (lastPosition) drawMap(lastPosition.coords, currentBeacon.data(), lastHeading);
-  };
-  window.addEventListener('deviceorientation', orientationHandler);
-  try {
-    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] });
-    const advertisementHandler = event => {
-      const rssi = event.rssi;
-      lastRSSI = rssi;
-      const distance = lastPosition ? calculateDistance(lastPosition.coords, currentBeacon.data()) : Infinity;
-      if (distance > 10 && rssi > -80) {
-        return;
+// Admin: Verify prize QR
+
+// Local status monitoring
+if (isAdmin) {
+  setInterval(async () => {
+    try {
+      const res = await fetch('http://192.168.1.100/api/beaconStatus');
+      const status = await res.json();
+      const beacons = ['00', '01', '02', '03', '04'].map(id => ({
+        id: `beacon_${id}`,
+        status: status[`beacon_${id}`] ? 'Online' : 'Offline'
+      }));
+      document.getElementById('beaconStatus').innerText = beacons.map(b => `${b.id}: ${b.status}`).join('\n');
+      if (beacons.some(b => b.status === 'Offline')) {
+        alert('Beacon offline detected!');
       }
-      document.getElementById('hotCold').innerText = `Distance: ${distance.toFixed(2)}m | ${rssi > -60 ? 'Hot!' : rssi > -80 ? 'Warm' : 'Cold'}`;
-      animatePulseRing(rssi);
-      if (rssi > -60) {
-        const serviceData = event.serviceData.get(0xFEAA);
-        if (serviceData) {
-          const instanceId = Array.from(new Uint8Array(serviceData)).slice(10, 16).map(b => b.toString(16).padStart(2, '0')).join('');
-          if (instanceId === currentBeacon.data().instanceId) {
-            triggerMechanic(currentBeacon.data().mechanic);
-          }
-        }
-      }
-    };
-    device.addEventListener('advertisementreceived', advertisementHandler);
-    await device.watchAdvertisements();
-  } catch (error) {
-    console.error('BLE error:', error);
-    alert('BLE error: ' + error.message);
-  }
+    } catch (err) {
+      console.error('Beacon status error:', err);
+      document.getElementById('beaconStatus').innerText = 'Error fetching beacon status';
+    }
+  }, 30000);
 }
+// Monitor beacon status for admins
+
+// Sync on reconnect
+window.addEventListener('online', syncLocalToFirebase);
+// Sync data when online
