@@ -62,12 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('firstVisitComplete')) {
         document.getElementById('welcomeSplash').style.display = 'none';
         document.getElementById('welcomeContainer').style.display = 'flex';
+        setupEventListeners();
     } else {
         document.getElementById('welcomeSplash').style.display = 'flex';
         document.getElementById('welcomeContainer').style.display = 'none';
+        document.getElementById('splashContinueButton').addEventListener('click', handleFirstVisit);
     }
+});
 
-    document.getElementById('splashContinueButton').addEventListener('click', handleFirstVisit);
+function setupEventListeners() {
     document.getElementById('scanButton').addEventListener('click', startQuest);
     document.getElementById('menuButton').addEventListener('click', toggleMenu);
     document.getElementById('permissionsButton').addEventListener('click', checkPermissionsStatus);
@@ -76,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mapBeaconButton').addEventListener('click', scanBeaconQR);
     document.getElementById('triggerChaosButton').addEventListener('click', triggerChaos);
     document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
-});
+}
+
 
 async function handleFirstVisit() {
     try {
@@ -90,6 +94,7 @@ async function handleFirstVisit() {
         localStorage.setItem('firstVisitComplete', 'true');
         document.getElementById('welcomeSplash').style.display = 'none';
         document.getElementById('welcomeContainer').style.display = 'flex';
+        setupEventListeners();
     } catch (error) {
         console.error('Permission error:', error);
         alert('Permission error: ' + error.message);
