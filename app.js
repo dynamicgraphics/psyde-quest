@@ -150,6 +150,23 @@ function drawMap(playerPos, beaconPos, heading) {
   }
 }
 
+async function checkPermissions() {
+    const geoStatus = await navigator.permissions.query({ name: 'geolocation' });
+    let bleStatus = { state: 'prompt' };
+    if ('bluetooth' in navigator) {
+        bleStatus = await navigator.permissions.query({ name: 'bluetooth' });
+    }
+
+    if (geoStatus.state === 'granted' && bleStatus.state === 'granted') {
+        return true;
+    }
+    if (geoStatus.state === 'denied' || bleStatus.state === 'denied') {
+        alert('Permissions Denied. Please enable Location and Bluetooth in your browser settings to continue.');
+        return false;
+    }
+    return 'prompt';
+}
+
 async function startQuest() {
   if (questActive) {
     alert('Quest already active!');
@@ -157,72 +174,84 @@ async function startQuest() {
   }
   userId = 'user_' + Date.now();
   document.getElementById('welcomeContainer').style.display = 'none';
-  document.getElementById('permissionGuide').style.display = 'block';
+
+  const permissionStatus = await checkPermissions();
+  if (permissionStatus === true) {
+      document.getElementById('progressBar').style.display = 'block';
+      continueQuest();
+  } else if (permissionStatus === 'prompt') {
+      document.getElementById('permissionGuide').style.display = 'block';
+  }
 }
 
 async function handlePermissions() {
-  document.getElementById('permissionGuide').style.display = 'none';
-  document.getElementById('progressBar').style.display = 'block';
-  try {
-    await navigator.geolocation.getCurrentPosition(
-      () => {},
-      err => { throw new Error('GPS permission needed: ' + err.message); }, { enableHighAccuracy: true }
-    );
-    await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
-      throw new Error('BLE permission needed: ' + err.message);
-    });
-    questActive = true;
+    document.getElementById('permissionGuide').style.display = 'none';
+    document.getElementById('progressBar').style.display = 'block';
+    try {
+        await navigator.geolocation.getCurrentPosition(
+            () => {},
+            err => { throw new Error('GPS permission needed: ' + err.message); }, { enableHighAccuracy: true }
+        );
+        await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
+            throw new Error('BLE permission needed: ' + err.message);
+        });
+        questActive = true;
+        continueQuest();
+    } catch (error) {
+        console.error('Start quest error:', error);
+        alert('Error starting quest: ' + error.message);
+        questActive = false;
+        document.getElementById('welcomeContainer').style.display = 'flex';
+        document.getElementById('progressBar').style.display = 'none';
+    }
+}
+
+async function continueQuest() {
     const qrData = await scanQR();
     if (!qrData) {
-      questActive = false;
-      document.getElementById('welcomeContainer').style.display = 'flex';
-      document.getElementById('progressBar').style.display = 'none';
-      return;
-    }
-    const validDomains = [
-      'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
-      'https://dynamicgraphics.github.io/psyde-quest/start',
-      'http://192.168.1.100/start'
-    ];
-    if (validDomains.some(domain => qrData.startsWith(domain))) {
-      const beaconId = new URL(qrData).searchParams.get('beacon');
-      if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
-        alert('Invalid beacon ID format!');
         questActive = false;
         document.getElementById('welcomeContainer').style.display = 'flex';
         document.getElementById('progressBar').style.display = 'none';
         return;
-      }
-      let beaconDoc = await getLocal('beacons', beaconId);
-      if (!beaconDoc && navigator.onLine) {
-        const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
-        if (firebaseDoc.exists()) {
-          beaconDoc = firebaseDoc.data();
+    }
+    const validDomains = [
+        'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
+        'https://dynamicgraphics.github.io/psyde-quest/start',
+        'http://192.168.1.100/start'
+    ];
+    if (validDomains.some(domain => qrData.startsWith(domain))) {
+        const beaconId = new URL(qrData).searchParams.get('beacon');
+        if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
+            alert('Invalid beacon ID format!');
+            questActive = false;
+            document.getElementById('welcomeContainer').style.display = 'flex';
+            document.getElementById('progressBar').style.display = 'none';
+            return;
         }
-      }
-      if (beaconDoc) {
-        currentBeacon = { id: beaconId, data: () => beaconDoc };
-        startNavigation();
-      } else {
-        alert('Beacon not found!');
+        let beaconDoc = await getLocal('beacons', beaconId);
+        if (!beaconDoc && navigator.onLine) {
+            const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
+            if (firebaseDoc.exists()) {
+                beaconDoc = firebaseDoc.data();
+            }
+        }
+        if (beaconDoc) {
+            currentBeacon = { id: beaconId, data: () => beaconDoc };
+            startNavigation();
+        } else {
+            alert('Beacon not found!');
+            questActive = false;
+            document.getElementById('welcomeContainer').style.display = 'flex';
+            document.getElementById('progressBar').style.display = 'none';
+        }
+    } else {
+        alert('Invalid QR code!');
         questActive = false;
         document.getElementById('welcomeContainer').style.display = 'flex';
         document.getElementById('progressBar').style.display = 'none';
-      }
-    } else {
-      alert('Invalid QR code!');
-      questActive = false;
-      document.getElementById('welcomeContainer').style.display = 'flex';
-      document.getElementById('progressBar').style.display = 'none';
     }
-  } catch (error) {
-    console.error('Start quest error:', error);
-    alert('Error starting quest: ' + error.message);
-    questActive = false;
-    document.getElementById('welcomeContainer').style.display = 'flex';
-    document.getElementById('progressBar').style.display = 'none';
-  }
 }
+
 function calculateDistance(coords1, coords2) {
   const R = 6371e3;
   const lat1 = coords1.latitude * Math.PI / 180;
