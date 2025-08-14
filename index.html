@@ -1,135 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>Psyde Quest</title>
- <link rel="manifest" href="/psyde-quest/manifest.json">
- <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
- <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
- <style>
- body {
- background: #000;
- color: #fff;
- font-family: Arial, sans-serif;
- text-align: center;
- margin: 0;
- padding: 0;
- display: flex;
- justify-content: center;
- align-items: center;
- min-height: 100vh;
- }
- #welcomeSplash, #welcomeContainer {
- flex-direction: column;
- display: flex;
- justify-content: center;
- align-items: center;
- }
- #title {
- font-family: 'Press Start 2P', cursive;
- font-size: 2.5em;
- color: #ffd700;
- text-shadow: 2px 2px #000;
- margin: 20px 0;
- }
- #mainMenu {
- padding: 20px;
- }
- #qrVideo, #mapCanvas, #pulseRing, #simonGame, #mechanics {
- display: none;
- margin: 20px auto;
- }
- #mapCanvas {
- width: 200px;
- height: 200px;
- border: 1px solid #fff;
- }
- #pulseRing {
- width: 50px;
- height: 50px;
- border: 2px solid #fff;
- border-radius: 50%;
- position: absolute;
- top: 50%;
- left: 50%;
- transform: translate(-50%, -50%);
- }
- #progressBar {
- width: 80%;
- height: 20px;
- background: #333;
- margin: 20px auto;
- display: none;
- }
- #progressFill {
- height: 100%;
- background: #fff;
- width: 0;
- }
- #menu {
- display: none;
- position: fixed;
- top: 0;
- right: 0;
- background: #000;
- padding: 10px;
- border: 1px solid #fff;
- color: #fff;
- }
- button {
- background: #fff;
- color: #000;
- border: 1px solid #000;
- padding: 10px 20px;
- margin: 10px;
- cursor: pointer;
- font-size: 1em;
- font-family: 'Press Start 2P', cursive;
- box-shadow: 4px 4px 0px #888;
- }
- button:hover {
- background: #ccc;
- box-shadow: 2px 2px 0px #888;
- }
- .simon-button {
- width: 60px;
- height: 60px;
- margin: 5px;
- border-radius: 10px;
- }
- </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Psyde Quest</title>
+  <link rel="manifest" href="/psyde-quest/manifest.json">
+  <!-- Link to manifest for PWA -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <!-- Press Start 2P font for NES Zelda-style title -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <!-- jsQR for QR scanning -->
+  <style>
+    html, body {
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+    }
+    /* Ensure body fills viewport and centers content */
+    #welcomeSplash, #welcomeContainer {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    /* Center splash and container with max width */
+    #title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 2.5em;
+      color: #ffd700;
+      text-shadow: 2px 2px #000;
+      margin: 20px 0;
+    }
+    /* Gold NES Zelda-style title */
+    #mainMenu {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* Flex menu for buttons */
+    #qrVideo, #mapCanvas, #pulseRing, #simonGame, #mechanics {
+      display: none;
+      margin: 20px auto;
+    }
+    /* Hide non-active elements */
+    #mapCanvas {
+      width: 200px;
+      height: 200px;
+      border: 1px solid #fff;
+    }
+    /* Map canvas styling */
+    #pulseRing {
+      width: 50px;
+      height: 50px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    /* Pulsing ring styling */
+    #progressBar {
+      width: 80%;
+      max-width: 400px;
+      height: 20px;
+      background: #333;
+      margin: 20px auto;
+      display: none;
+    }
+    /* Progress bar hidden by default */
+    #progressFill {
+      height: 100%;
+      background: #fff;
+      width: 0;
+      transition: width 0.3s ease;
+    }
+    /* Smooth progress fill transition */
+    #menu {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: 0;
+      background: #000;
+      padding: 10px;
+      border: 1px solid #fff;
+      color: #fff;
+      max-width: 300px;
+    }
+    /* Menu styling with max width */
+    button {
+      background: #fff;
+      color: #000;
+      border: 1px solid #000;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      font-size: 1em;
+      font-family: 'Press Start 2P', cursive;
+      box-shadow: 4px 4px 0px #888;
+    }
+    /* Button styling with shadow */
+    button:hover {
+      background: #ccc;
+      box-shadow: 2px 2px 0px #888;
+    }
+    /* Button hover effect */
+    .simon-button {
+      width: 60px;
+      height: 60px;
+      margin: 5px;
+      border-radius: 10px;
+    }
+    /* Simon game button styling */
+    #hotCold, #leaderboard, #beaconStatus {
+      font-size: 1em;
+      margin: 10px 0;
+    }
+    /* Text styling for feedback */
+  </style>
 </head>
 <body>
- <div id="welcomeSplash">
- <div id="title">Welcome to Psyde Quest</div>
- <p>This app needs your location and Bluetooth to find beacons.</p>
- <button id="splashContinueButton">Continue</button>
- </div>
- <div id="welcomeContainer" style="display: none;">
- <div id="title">Welcome to Psyde Quest</div>
- <div id="mainMenu">
- <button id="scanButton">Scan</button>
- <button id="menuButton">Menu</button>
- </div>
- </div>
- <video id="qrVideo" width="300" height="300"></video>
- <canvas id="mapCanvas"></canvas>
- <div id="pulseRing"></div>
- <p id="hotCold"></p>
- <div id="progressBar"><div id="progressFill"></div></div>
- <div id="mechanics"></div>
- <div id="simonGame"><div id="simonButtons"></div></div>
- <div id="menu">
- <div id="leaderboard"></div>
- <button id="permissionsButton">Permissions Check</button>
- <button id="shareXButton">Share on X</button>
- <button id="shareInstagramButton">Share on Instagram</button>
- <div id="beaconStatus"></div>
- <button id="mapBeaconButton">Map Beacon</button>
- <button id="triggerChaosButton">Trigger Chaos</button>
- <button id="verifyPrizeButton">Verify Prize</button>
- </div>
- <script type="module" src="/psyde-quest/app.js"></script>
+  <div id="welcomeSplash">
+    <div id="title">Welcome to Psyde Quest</div>
+    <p>This app needs your location and Bluetooth to find beacons.</p>
+    <button id="splashContinueButton">Continue</button>
+  </div>
+  <!-- Welcome splash screen -->
+  <div id="welcomeContainer" style="display: none;">
+    <div id="title">Welcome to Psyde Quest</div>
+    <div id="mainMenu">
+      <button id="scanButton">Scan</button>
+      <button id="menuButton">Menu</button>
+    </div>
+  </div>
+  <!-- Main menu container -->
+  <video id="qrVideo" width="300" height="300"></video>
+  <!-- Hidden video for QR scanning -->
+  <canvas id="mapCanvas"></canvas>
+  <!-- Hidden canvas for navigation map -->
+  <div id="pulseRing"></div>
+  <!-- Hidden pulsing ring for navigation -->
+  <p id="hotCold"></p>
+  <!-- Dynamic text for navigation feedback -->
+  <div id="progressBar"><div id="progressFill"></div></div>
+  <!-- Progress bar for quest progress -->
+  <div id="mechanics"></div>
+  <!-- Hidden container for mechanics -->
+  <div id="simonGame"><div id="simonButtons"></div></div>
+  <!-- Hidden Simon game container -->
+  <div id="menu">
+    <div id="leaderboard"></div>
+    <!-- Leaderboard display -->
+    <button id="permissionsButton">Permissions Check</button>
+    <!-- Button to check permissions -->
+    <button id="shareXButton">Share on X</button>
+    <!-- Share to X button -->
+    <button id="shareInstagramButton">Share on Instagram</button>
+    <!-- Share to Instagram button -->
+    <div id="beaconStatus"></div>
+    <!-- Admin beacon status -->
+    <button id="mapBeaconButton">Map Beacon</button>
+    <!-- Admin map beacon button -->
+    <button id="triggerChaosButton">Trigger Chaos</button>
+    <!-- Admin trigger chaos button -->
+    <button id="verifyPrizeButton">Verify Prize</button>
+    <!-- Admin verify prize button -->
+  </div>
+  <script type="module" src="/psyde-quest/app.js?cachebust=20250814"></script>
+  <!-- Main app logic with cache-busting -->
 </body>
 </html>
