@@ -59,6 +59,7 @@ if ('serviceWorker' in navigator) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scanButton').addEventListener('click', startQuest);
+  document.getElementById('permissionsButton').addEventListener('click', checkPermissionsStatus);
   document.getElementById('menuButton').addEventListener('click', toggleMenu);
   document.getElementById('shareXButton').addEventListener('click', () => sharePhoto('x'));
   document.getElementById('shareInstagramButton').addEventListener('click', () => sharePhoto('instagram'));
@@ -67,6 +68,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
   document.getElementById('permissionButton').addEventListener('click', handlePermissions);
 });
+
+async function checkPermissionsStatus() {
+  let geoStatus = { state: 'prompt' };
+  let bleStatus = { state: 'prompt' };
+
+  if ('geolocation' in navigator) {
+    geoStatus = await navigator.permissions.query({ name: 'geolocation' });
+  }
+
+  if ('bluetooth' in navigator) {
+    bleStatus = await navigator.permissions.query({ name: 'bluetooth' });
+  }
+
+  let message = 'All required permissions are enabled. You are good to go!';
+  if (geoStatus.state === 'denied' || bleStatus.state === 'denied') {
+    let deniedPermissions = [];
+    if (geoStatus.state === 'denied') deniedPermissions.push('Location (GPS)');
+    if (bleStatus.state === 'denied') deniedPermissions.push('Bluetooth');
+    message = `The following permissions are blocked: ${deniedPermissions.join(' and ')}. Please enable them in your browser settings to continue.`;
+  } else if (geoStatus.state === 'prompt' || bleStatus.state === 'prompt') {
+    let pendingPermissions = [];
+    if (geoStatus.state === 'prompt') pendingPermissions.push('Location (GPS)');
+    if (bleStatus.state === 'prompt') pendingPermissions.push('Bluetooth');
+    message = `The following permissions are ready to be requested: ${pendingPermissions.join(' and ')}. Click Scan to continue.`;
+  }
+
+  alert(message);
+}
 
 async function scanQR() {
   if (Date.now() - lastQRScan < 5000) {
@@ -150,23 +179,6 @@ function drawMap(playerPos, beaconPos, heading) {
   }
 }
 
-async function checkPermissions() {
-    const geoStatus = await navigator.permissions.query({ name: 'geolocation' });
-    let bleStatus = { state: 'prompt' };
-    if ('bluetooth' in navigator) {
-        bleStatus = await navigator.permissions.query({ name: 'bluetooth' });
-    }
-
-    if (geoStatus.state === 'granted' && bleStatus.state === 'granted') {
-        return true;
-    }
-    if (geoStatus.state === 'denied' || bleStatus.state === 'denied') {
-        alert('Permissions Denied. Please enable Location and Bluetooth in your browser settings to continue.');
-        return false;
-    }
-    return 'prompt';
-}
-
 async function startQuest() {
   if (questActive) {
     alert('Quest already active!');
@@ -181,6 +193,8 @@ async function startQuest() {
       continueQuest();
   } else if (permissionStatus === 'prompt') {
       document.getElementById('permissionGuide').style.display = 'block';
+  } else {
+    document.getElementById('welcomeContainer').style.display = 'flex';
   }
 }
 
