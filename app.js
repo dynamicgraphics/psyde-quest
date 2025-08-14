@@ -57,17 +57,46 @@ async function syncLocalToFirebase() {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/psyde-quest/sw.js').catch(err => console.error('Service Worker error:', err));
 }
+
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('scanButton').addEventListener('click', startQuest);
-  document.getElementById('permissionsButton').addEventListener('click', checkPermissionsStatus);
-  document.getElementById('menuButton').addEventListener('click', toggleMenu);
-  document.getElementById('shareXButton').addEventListener('click', () => sharePhoto('x'));
-  document.getElementById('shareInstagramButton').addEventListener('click', () => sharePhoto('instagram'));
-  document.getElementById('mapBeaconButton').addEventListener('click', scanBeaconQR);
-  document.getElementById('triggerChaosButton').addEventListener('click', triggerChaos);
-  document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
-  document.getElementById('permissionButton').addEventListener('click', handlePermissions);
+    if (localStorage.getItem('firstVisitComplete')) {
+        document.getElementById('welcomeSplash').style.display = 'none';
+        document.getElementById('welcomeContainer').style.display = 'flex';
+    } else {
+        document.getElementById('welcomeSplash').style.display = 'flex';
+        document.getElementById('welcomeContainer').style.display = 'none';
+    }
+
+    document.getElementById('splashContinueButton').addEventListener('click', handleFirstVisit);
+    document.getElementById('scanButton').addEventListener('click', startQuest);
+    document.getElementById('menuButton').addEventListener('click', toggleMenu);
+    document.getElementById('permissionsButton').addEventListener('click', checkPermissionsStatus);
+    document.getElementById('shareXButton').addEventListener('click', () => sharePhoto('x'));
+    document.getElementById('shareInstagramButton').addEventListener('click', () => sharePhoto('instagram'));
+    document.getElementById('mapBeaconButton').addEventListener('click', scanBeaconQR);
+    document.getElementById('triggerChaosButton').addEventListener('click', triggerChaos);
+    document.getElementById('verifyPrizeButton').addEventListener('click', verifyPrize);
 });
+
+async function handleFirstVisit() {
+    try {
+        await navigator.geolocation.getCurrentPosition(
+            () => {},
+            err => { throw new Error('GPS permission needed: ' + err.message); }, { enableHighAccuracy: true }
+        );
+        await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
+            throw new Error('BLE permission needed: ' + err.message);
+        });
+        localStorage.setItem('firstVisitComplete', 'true');
+        document.getElementById('welcomeSplash').style.display = 'none';
+        document.getElementById('welcomeContainer').style.display = 'flex';
+    } catch (error) {
+        console.error('Permission error:', error);
+        alert('Permission error: ' + error.message);
+        document.getElementById('welcomeSplash').style.display = 'none';
+        document.getElementById('welcomeContainer').style.display = 'flex';
+    }
+}
 
 async function checkPermissionsStatus() {
   let geoStatus = { state: 'prompt' };
@@ -187,83 +216,45 @@ async function startQuest() {
   userId = 'user_' + Date.now();
   document.getElementById('welcomeContainer').style.display = 'none';
 
-  const permissionStatus = await checkPermissions();
-  if (permissionStatus === true) {
-      document.getElementById('progressBar').style.display = 'block';
-      continueQuest();
-  } else if (permissionStatus === 'prompt') {
-      document.getElementById('permissionGuide').style.display = 'block';
-  } else {
-    document.getElementById('welcomeContainer').style.display = 'flex';
+  const qrData = await scanQR();
+  if (!qrData) {
+      questActive = false;
+      document.getElementById('welcomeContainer').style.display = 'flex';
+      return;
   }
-}
-
-async function handlePermissions() {
-    document.getElementById('permissionGuide').style.display = 'none';
-    document.getElementById('progressBar').style.display = 'block';
-    try {
-        await navigator.geolocation.getCurrentPosition(
-            () => {},
-            err => { throw new Error('GPS permission needed: ' + err.message); }, { enableHighAccuracy: true }
-        );
-        await navigator.bluetooth.requestDevice({ filters: [{ services: [0xFEAA] }] }).catch(err => {
-            throw new Error('BLE permission needed: ' + err.message);
-        });
-        questActive = true;
-        continueQuest();
-    } catch (error) {
-        console.error('Start quest error:', error);
-        alert('Error starting quest: ' + error.message);
-        questActive = false;
-        document.getElementById('welcomeContainer').style.display = 'flex';
-        document.getElementById('progressBar').style.display = 'none';
-    }
-}
-
-async function continueQuest() {
-    const qrData = await scanQR();
-    if (!qrData) {
-        questActive = false;
-        document.getElementById('welcomeContainer').style.display = 'flex';
-        document.getElementById('progressBar').style.display = 'none';
-        return;
-    }
-    const validDomains = [
-        'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
-        'https://dynamicgraphics.github.io/psyde-quest/start',
-        'http://192.168.1.100/start'
-    ];
-    if (validDomains.some(domain => qrData.startsWith(domain))) {
-        const beaconId = new URL(qrData).searchParams.get('beacon');
-        if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
-            alert('Invalid beacon ID format!');
-            questActive = false;
-            document.getElementById('welcomeContainer').style.display = 'flex';
-            document.getElementById('progressBar').style.display = 'none';
-            return;
-        }
-        let beaconDoc = await getLocal('beacons', beaconId);
-        if (!beaconDoc && navigator.onLine) {
-            const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
-            if (firebaseDoc.exists()) {
-                beaconDoc = firebaseDoc.data();
-            }
-        }
-        if (beaconDoc) {
-            currentBeacon = { id: beaconId, data: () => beaconDoc };
-            startNavigation();
-        } else {
-            alert('Beacon not found!');
-            questActive = false;
-            document.getElementById('welcomeContainer').style.display = 'flex';
-            document.getElementById('progressBar').style.display = 'none';
-        }
-    } else {
-        alert('Invalid QR code!');
-        questActive = false;
-        document.getElementById('welcomeContainer').style.display = 'flex';
-        document.getElementById('progressBar').style.display = 'none';
-    }
+  const validDomains = [
+      'https://dynamicgraphics.github.io/psyde-quest/psyde-quest/start',
+      'https://dynamicgraphics.github.io/psyde-quest/start',
+      'http://192.168.1.100/start'
+  ];
+  if (validDomains.some(domain => qrData.startsWith(domain))) {
+      const beaconId = new URL(qrData).searchParams.get('beacon');
+      if (!beaconId || !beaconId.match(/^beacon_\d{2}$/)) {
+          alert('Invalid beacon ID format!');
+          questActive = false;
+          document.getElementById('welcomeContainer').style.display = 'flex';
+          return;
+      }
+      let beaconDoc = await getLocal('beacons', beaconId);
+      if (!beaconDoc && navigator.onLine) {
+          const firebaseDoc = await getDoc(doc(db, 'beacons', beaconId));
+          if (firebaseDoc.exists()) {
+              beaconDoc = firebaseDoc.data();
+          }
+      }
+      if (beaconDoc) {
+          currentBeacon = { id: beaconId, data: () => beaconDoc };
+          startNavigation();
+      } else {
+          alert('Beacon not found!');
+          questActive = false;
+          document.getElementById('welcomeContainer').style.display = 'flex';
+      }
+  } else {
+      alert('Invalid QR code!');
+      questActive = false;
+      document.getElementById('welcomeContainer').style.display = 'flex';
+  }
 }
 
 function calculateDistance(coords1, coords2) {
