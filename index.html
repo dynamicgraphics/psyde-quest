@@ -20,7 +20,7 @@
  align-items: center;
  min-height: 100vh;
  }
- #welcomeContainer {
+ #welcomeSplash, #welcomeContainer {
  flex-direction: column;
  display: flex;
  justify-content: center;
@@ -34,7 +34,6 @@
  margin: 20px 0;
  }
  #mainMenu {
- display: block;
  padding: 20px;
  }
  #qrVideo, #mapCanvas, #pulseRing, #simonGame, #mechanics {
@@ -102,19 +101,17 @@
  </style>
 </head>
 <body>
- <div id="welcomeContainer">
+ <div id="welcomeSplash">
+ <div id="title">Welcome to Psyde Quest</div>
+ <p>This app needs your location and Bluetooth to find beacons.</p>
+ <button id="splashContinueButton">Continue</button>
+ </div>
+ <div id="welcomeContainer" style="display: none;">
  <div id="title">Welcome to Psyde Quest</div>
  <div id="mainMenu">
  <button id="scanButton">Scan</button>
- <button id="permissionsButton">Permissions Check</button>
  <button id="menuButton">Menu</button>
  </div>
- </div>
- <div id="permissionGuide" style="display: none;">
- <h3>Permissions Required</h3>
- <p>This app needs your location (GPS) and Bluetooth to find the beacons.</p>
- <p>Please click "Allow" on the next prompts.</p>
- <button id="permissionButton">Continue</button>
  </div>
  <video id="qrVideo" width="300" height="300"></video>
  <canvas id="mapCanvas"></canvas>
@@ -125,6 +122,7 @@
  <div id="simonGame"><div id="simonButtons"></div></div>
  <div id="menu">
  <div id="leaderboard"></div>
+ <button id="permissionsButton">Permissions Check</button>
  <button id="shareXButton">Share on X</button>
  <button id="shareInstagramButton">Share on Instagram</button>
  <div id="beaconStatus"></div>
